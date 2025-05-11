@@ -1,288 +1,273 @@
-# Viikko 20
+### [<- Viikko 20](./viikko-20.md)
+# Viikko 21
 ## Maanantai 
-Kyselyn perusteella kurssilaisilla on perus-web-teknologiat aika hyvin hallussa, mutta aloitetaan kuitenkin perusteista, ja tehdään vähän sormiharjoituksia, niin saadaan verryteltyä koodauslihaksia. 
+Perehdytään HTTP:een ja RESTiin tarkemmin.
 
-Katselmoikaa aina yhdessä edellisen päivän tehtävät, ja jutelkaa miten hyvin tehtävässä käytetyt teknologiat tuntui olevan hallussa.
+### HTTP
 
-Aloitetaan asentamalla työkalut ellei ne jo löydy työkoneista: 
-- VSCode: https://code.visualstudio.com/  
-- Python: https://www.python.org/  
-- Chrome ja Firefox (projektia on hyvä testata parilla eri selaimella ihan varmuuden vuoksi): https://www.google.com/chrome/ ja https://www.mozilla.org/fi/firefox/new/  
-- Onhan kaikilla GitHub-tili: https://github.com/  
+**HTTP (HyperText Transfer Protocol)** on webin perustana oleva tilaton tiedonsiirtoprotokolla, jolla perinteisesti tarjoiltiin html-sivuja palvelimelta selaimille. Tämä on yhä sen keskeinen käyttötarkoitus, mutta nykyisin sen yli liikkuu myös muunlaista dataa, usein **REST (REpresentational State Transfer)**-arkkitehtuuria käyttäen.
 
-### Tehtävä 1: staattiset perus-HTML-sivut 
+HTTP-liikenne koostuu **HTTP-pyynnöistä (HTTP request)** ja **HTTP-vastauksista (HTTP-response):** asiakassovellus lähettää **pyynnön,** jonka vastaanottava palvelin käsittelee, ja palauttaa siihen **vastauksen.**
 
-Toteuta HTML:llä itsellesi CV-sivu, jossa kerrot itsestäsi, osaamisestasi ja historiastasi. 
+HTTP-viestit sisältävät seuraavat osat:
+- **Aloitusrivi (Start line),** joka kertoo käytetyn HTTP-version, sekä pyynnössä käytetyn HTTP-metodin, ja vastauksessa statuskoodin
+- **Otsakkeet (Headers),** jotka sisältävät viestin metadataa kuten sisällön datatyypin ja esim. yhteyden ylläpitoon ja autentikointiin liittyviä tietoja
+- Valinnainen **viestirunko (Body),** joka sisältää varsinaisen siirrettävän datan
 
-Muistellaan HTML-dokumentin perusrakennetta, ja mitä metadataa head-tagiin voidaan sisällyttää. Muistutetaan mieliin perus-tagit `h1-h6`, `p`, `div`, `a`, `img`, numeroidut ja numeroimattomat listat, listaelementit ja taulut. 
+Yksikertainen HTTP-pyyntö voi olla esim. tämän näköinen:
+```
+POST /users HTTP/1.1
+Host: example.com
+Content-Type: application/json
+Content-Length: 40
 
-Muotoilu tai ulkoasu ei ole tässä tehtävässä olennaista, mutta pyri siihen, että käytät eri tageja asianmukaisesti, esimerkiksi voit tehdä osaamisestasi taulukon ja työhistoriastasi listan. 
+{
+    "name": "John Doe",
+    "age": 30
+}
 
-### Tehtävä 2: useammasta HTML-sivusta koostuva sivusto 
+```
+- Aloitusrivillä määritellään, että kyseessä on **POST**-tyyppinen pyyntö (eli halutaan luoda uusi resurssi) polkuun **/users**, ja käytetty HTTP-versio on **1.1**. (1.1 on yhä laajasti käytetty, mutta versiot 2 ja 3 tarjoavat suorityskykyparannuksia)
+- Aloitusrivin jälkeen on otsakkeet Host, Content-Type ja Content-Length:
+    - **Host** kertoo URL:n, johon yhteys otetaan
+    - **Content-Type** kertoo missä muodossa viestirungon tieto on (tässä tapauksessa JSON, toinen yleinen muoto on application/x-www-form-urlencoded eli URL-parametrimuodossa annettu lomakedata)
+    - **Content-Length** kertoo minkä mittainen viestirunko on (40 merkkiä)
+- Lopuksi tyhjän rivin jälkeen on viestirunko, joka sisältää **JSON**-muotoisen datapaketin
 
-Laajenna sivustoa niin, että listaat esimerkiksi 5 – 10 lempielokuvaasi, -kirjaasi tai -peliäsi, kukin omalla sivullaan. Toteuta sivusto niin, että sivujen välillä pystyy navigoimaan linkkien avulla.
+HTTP-vastaus puolestaan voi näyttää esim. tällaiselta:
+```
+HTTP/1.1 201 Created
+Content-Type: application/json
+Location: http://example.com/users/123
 
-Kullakin sivulla tulisi olla ainakin yksi kuva, otsikko ja kuvaus aiheesta, perustietoja kuten julkaisuvuosi, julkaisumaa, kirjoittaja tai ohjaaja jne, ja esim. jotain anekdoottitietoa. Voit kopioida sisällön esim. imdb:stä, Wikipediasta tai muusta lähteestä, ei tarvitse kirjoittaa kaikkea itse. 
+{
+  "message": "New user created",
+  "user": {
+    "id": 123,
+    "name": "John Doe",
+    "age": 30
+  }
+}
+```
 
-Mieti sivuston rakennetta ja sisältöä ja käytä asianmukaisia semanttisia tageja kuten `nav`, `article`, `section`, `figure`, `figcaption` jne. Muotoile sivut niin, että ne ovat keskenään yhdenmukaiset, esimerkiksi navigointi on joka sivulla samassa paikassa ja saman näköinen. Muistutetaan mieleen, miten CSS tuodaan dokumenttiin, ja miten CSS-valitsimet, luokat ja id:t toimivat. Perehdytään miten spesifisyys ja perintä vaikuttavat siihen, mitkä samanaikaiset CSS-säännöt ovat milloinkin voimassa. 
+- Aloitusrivillä on ensin käytetty **HTTP**-versio (1.1), kolminumeroinen **statuskoodi** sekä **statusteksti**
+- Sen jälkeen on otsakkeet Content-Type ja Location:
+    - **Content-Type** kertoo taas viestirungon formaatin
+    - **Location** on uudelleenohjauksessa käytetty otsake. 201-tyyppisessä vastauksessa se kertoo osoitteen, josta luotu resurssi löytyy
+- Lopuksi tyhjän rivin jälkeen on viestirunko, joka tässä tapauksesssa sisältää **vastausviestin** sekä **luodun resurssin tiedot**
 
-#### Resursseja
-- https://www.w3schools.com/html/default.asp 
-- https://developer.mozilla.org/en-US/docs/Web/HTML
-- https://developer.mozilla.org/en-US/docs/Glossary/Semantics
+### REST
 
-Semanttinen HTML: 
-- https://www.youtube.com/watch?v=ZThq93Yuwd0  
+REST on ohjelmointirajapintojen toteuttamiseen tarkoitettu arkkitehtuurityyli. Sen kantavat periaatteet ovat:
+1. Asiakas-palvelinmalli
+2. Tilattomuus
+3. Välimuistin hyödyntäminen
+4. Yhdenmukainen rajapinta
+5. Kerrostettu järjestelmä
 
-CSS lyhyesti:
-- https://www.youtube.com/watch?v=OEV8gMkCHXQ  
-- https://www.youtube.com/watch?v=1PnVor36_40  
+REST perustuu siihen, että palvelinta voidaan pyytää toteuttamaan erilaisia toimenpiteitä (luominen, lukeminen, päivittäminen ja poistaminen, CRUD) eri resursseihin. Resurssit on eritelty *endpointeilla* eli osoitteilla. Esimerkiksi voimme lähettää DELETE-pyynnön osoitteeseen `tilavaraus.fi/tilat/5`. Tässä otamme yhteyden palvelimeen, joka sijaitsee osoitteessa `tilavaraus.fi`, ja haluamme kohdistaa operaation resurssiin `/tilat/5`, eli tilaresurssiin, jonka ID on 5. RESTiä käytettäessä tietoa siirretään yleensä JSON-muodossa.
+
+REST-rajapintojen testaamiseen ja debuggaamiseen on useita työkaluja. Suosituin niistä on luultavasti **Postman.** Postmanilla voidaan lähettää halutun muotoisia HTTP-kutsuja halutuilla parametreilla, ja tarkastella palautunutta HTTP-vastausta. Alla olevassa kuvassa on lähetetty GET-pyyntö osoitteeseen `http://data.foli.fi/siri/sm/1`, ja alla näkyy osa palvelimen palauttamaa JSON-dataa:
+
+![Postman](kuvat/postman.png)
+
+Lisäksi web-sovellusta kehitettäessä lähteviä ja palautuvia HTTP-viestejä voi tarkastella selaimen kehitystyökaluilla **Network**-näkymästä. Kehitystyökalut avautuvat yleisimmillä selaimilla F12-painikkeella:
+
+![Dev tools](kuvat/dev-tools.png)
+
+### Harjoituksia
+
+Perehdy sivustolla [data.foli.fi/doc/index](https://data.foli.fi/doc/index) annettuihin dokumentaatioihin, ja testaa HTTP-pyyntöjä sivun rajapintoja vasten käyttäen Postmania ja selaimen kehitystyökaluja.
+
+### Tehtävä
+
+Luo Pythonilla REST API aiemmin luodulle tilavarauskannalle. Käytetään tässä samoja palikoita kuin viime perjantain web-palvelintehtävässä, eli http-kirjaston serveriä ja mysql-connectoria:
+- Luo tauluille **tilat,** **varaajat** ja **varaukset** GET-endpointit, jotka palauttavat taulun rivit JSON-muodossa.
+- Luo myös POST-endpointit, jotka ottavat vastaan tarvittavat parametrit, jotta tauluihin voi luoda uusia rivejä
+- Luo DELETE-endpointit, joilla tauluista voi poistaa rivejä. Ota poistettavan resurssin id vastaan osana polkua, esim. `/varaajat/3`
+
+### Resursseja
+HTTP:
+- https://www.freecodecamp.org/news/what-is-http/
+- https://www.youtube.com/watch?v=iYM2zFP3Zn0
+
+REST:
+- https://www.freecodecamp.org/news/what-is-a-rest-api/
+- https://www.youtube.com/watch?v=Q-BpqyOT3a8
+
 
 ## Tiistai 
 
-Jatketaan web-teknologioiden kertauksella. Otetaan mukaan muotoilu ja interaktiivisuus. 
+**Node** on JavaScript-ajoympäristö, jossa voidaan siis ajaa JavaScript-koodia suoraan tietokoneella selaimen ulkopuolella. Jotta Nodea voidaan käyttää, se pitää ensin ladata ja asentaa osoitteesta https://nodejs.org/en/download/prebuilt-installer.
 
-HTML:ssä eri elementeillä on omat sisäänrakennetut perusmuotoilut, jotka ovat jotakuinkin standardoituja, mutta voivat hieman vaihdella eri selainten ja käyttöjärjestelmien mukaan. Jos halutaan (ja yleensähän halutaan) muotoilla web-sisältöä tarkemmin, siihen käytetään CSS:ää.  
+Nodea käytetään samaan tapaan kuin esim. Python-ajoympäristöä: kirjoittamalla terminaaliin komento `node` siirrytään Noden interaktiiviseen komentotulkkiin, jossa voidaan testata yksittäisiä JavaScript-komentoja. Toisaalta jos meillä on JavaScript-ohjelmatiedosto, annetaan komento `node [tiedostonnimi]`, jolloin Node suorittaa tiedostossa sijaitsevan koodin. Nodea voi käyttää myös palvelinkoodin kirjoittamiseen, mutta CodePointissa toteutamme backendin Pythonilla. Frontendin puolella hyödynnämme kuitenkin Noden moduulikirjastoja.
 
-Web-palvelun muotoilun toteuttaminen pelkästään raa'alla CSS:llä on nykyisin harvinaista, sillä useimmissa projekteissa käytetään valmiita UI-kirjastoja. Nämä kirjastot kuitenkin käyttävät CSS:ää pellin alla, ja niiden debuggaaminen tai ulkoasun hienosäätäminen vaatii, että CSS on kohtuullisesti hallussa. Lisäksi vaikka kirjastojen tarjoamat valmiit yksittäiset komponentit olisivat miten siistejä tahansa, sivun taitto eli asettelu jää yleensä toteuttajan harteille. 
+Noden mukana koneelle asentuu [NPM](https://docs.npmjs.com/), joka on Noden pakettienhallintajärjestelmä. NPM-ekosysteemi on valtava ja koko ajan kasvava kokonaisuus erilaisia moduuleita ja kirjastoja. Nykyinen web-frontend-kehitys perustuu käytännössä NPM-moduuleihin.
 
-Web-palveluiden käyttöliittymän interaktiivisuuden toteuttamiseen käytetään JavaScriptiä, mutta ei pidä unohtaa, että HTML:stä löytyy nykyisin paljon valmiita sisäänrakennettuja elementtejä monenlaiseen käyttöön. Aina ei tarvitse rakentaa pyörää uudestaan, tai edes etsiä jonkun muun rakentamaa pyöräkomponenttia, jos selaimessa jo oleva pyörä täyttää tarpeet. Tiesitkö esimerkiksi, että HTML:ssä on nykyisin sisäänrakennettu [dialogikomponentti](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/dialog) ja [kalenterikenttä](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/date)? 
+NPM otetaan projektissa käyttöön ajamalla projektikansiossa komento `npm init`, joka kyselee muutamia perustietoja, ja luo NPM:n konfiguraatiotiedoston nimeltä `package.json`. Tämä tiedosto sisältää projektin metatietoa, mukaanlukien projektiin asennetut NPM-moduulit eli riippuvuudet.
 
-### Tehtävä 1: Flex-asettelu 
+Yleensä moduuleita käytetään osana frontend-frameworkkia kuten React tai Angular, mutta niiden koodi on normaalia JavaScriptiä, ja sitä voidaan käyttää myös "perinteiseen" tyyliin seuraavasti:
 
-Otetaan käyttöön HTML:n rakenteelliset tagit kuten header, footer, main ja aside. Pohjana on aiemmin toteutettu leffa/kirja/peli-sivusto, ja toteutetaan tässä tehtävässä asettelu **flexboxilla**, ks. viivakuva
+Luo ja avaa projektikansio, ja aja `npm init`, jotta saadaan projekti alustettua. Aja sitten komento `npm intall axios`, joka asentaa Axios-kirjaston, joka helpottaa HTTP-kutsujen tekemistä ja käsittelyä JavaScriptissä. Jos nyt katsot kansiossa olevaa `package.json`-tiedostoa, huomaat, että sen dependencies-osioon on lisätty kohta Axios, ja projektikansioon on ilmestynyt kansio `node_modules`, jonka sisällä on Axios-moduulun koodi ja sen riippuvuudet.
 
-![Viivakuva](kuvat/asettelu.png)
+Luo kansioon tiedosto `index.html`, ja kopioi seuraava sisältö siihen:
 
-Tässä siis Main-osiossa ei ole omaa tekstisisältöä ollenkaan, vaan se on pelkästään Article- ja Aside 2-osioiden wrapperi. Yritä toteuttaa asettelu niin, että Header, Footer ja Aside 1 pysyvät aina paikallaan, mutta Main-alue rullaa silloin, kun sen sisältö ei mahdu siihen.
+```html
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <title>Föli test</title>
+    <script defer src="./node_modules/axios/dist/axios.min.js"></script>
+    <script defer src="index.js"></script>
+</head>
+<body>
+    <h1>Föli pysäkin tiedot</h1>
+    <button onclick="getData()">Hae tiedot</button>
+    <ul id="stops-list"></ul>
+</body>
+</html>
+```
 
-### Tehtävä 2: Grid-asettelu 
+Seuraavaksi luo tiedosto `index.js`, ja kopioi seuraava sisältö siihen:
 
-Tehdään sivustosta uusi versio, jossa asettelu on samanlainen kuin edellisessä tehtävässä, mutta toteutettu **CSS-gridillä**. 
+```js
+function getData() {
+    axios('http://data.foli.fi/siri/sm/672')
+        .then(d=>createList(d.data.result))
+}
 
-### Tehtävä 3: HTML-lomake 
+function createList(stops) {
+    const listEl = document.getElementById('stops-list')
+    for (let stop of stops) {
+        const el = document.createElement('li')
+        const departureTime = new Date(parseInt(stop.expecteddeparturetime) * 1000 )
+        const text = stop.lineref + ' ' + stop.destinationdisplay + ' ' + departureTime.toLocaleTimeString()
+        el.innerHTML = text
+        listEl.append(el)
+    }
+}
+```
 
-Lisätään olemassaolevaan sivustoon uusi sivu, jolla on lomake, johon voidaan syöttää uuden elokuvan (kirjan, pelin tms) nimi, ohjaaja, julkaisija, julkaisupäivä, julkaisumaa, genre, synopsis, arvostelu (tähtien määrä 1 –5) ja tieto, onko elokuva jo katsottu.
+Asenna vielä VSCodeen laajennus [Live Preview](https://marketplace.visualstudio.com/items?itemName=ms-vscode.live-server). Tämä lisäke käynnistää yksinkertaisen HTTP-palvelimen, joka tarjoilee projektikansiossa olevia tiedostoja. Kun Live Preview on asennettu, avaa VSCoden komentopaletti näppäinyhdistelmällä <kbd>shift</kbd>+<kbd>ctrl</kbd>+<kbd>p</kbd>, kirjoita hakukenttään `live` ja valitse "Start Server":
 
-Julkaisumaa on pudotusvalikko, genre radiopainikkeita, synopsis textarea, arvostelu numerokenttä, julkaisupäivä päivämääräkenttä ja katsottu-tieto valintaruutu (checkbox). Muut kentät ovat tekstikenttiä.
+![Live Preview](kuvat/live-preview.png)
 
-Kun käyttäjä lomakkeen OK-painiketta, sivulla oleva JS poimii arvot lomakkeen kentistä, ja luo niiden pohjalta sivulle lomakkeen viereen elokuvasta infokortin, joka näyttää suunnilleen tällaiselta:
+Tämä avaa koodin viereen uuden paneelin, johon avautuu selainnäkymä osoitteeseen http://localhost:3000. Kun painat näkymässä olevaa painiketta, skripti hakee pysäkin 672 (Codepointin lähin bussipysäkki) tulevien bussien tiedot ja purkaa ne listariveiksi, jotka se sijoittaa HTML-koodissa olevan `<ul>` -elementin sisään. 
 
-![Leffakortti](kuvat/leffa.png)
-
-Tietoja ei tarvitse tallettaa minnekään pysyvästi, tässä vain harjoitellaan HTML:n ja JS:n yhteispeliä.
+### Tehtävä 1: JS-client tilavaraukseen
+Katso mallia ylläolevasta esimerkistä, ja luo näkymät, jotka esittävät tilavarauskannan tiedot käyttäen aiemmin luodun REST API-palvelimen endpointteja. Voit tehdä kunkin taulun omaan HTML-tiedostoonsa, ja rakentaa niiden välille simppelin navigaation. Kun olet saanut taulujen sisällöt näkyviin, lisää näkymiin vielä rivien poistaminen ja lisääminen.
 
 #### Resursseja
-- https://css-tricks.com/snippets/css/a-guide-to-flexbox/
-- https://css-tricks.com/snippets/css/complete-guide-grid/
-
-Flexbox: 
-- https://www.youtube.com/watch?v=K74l26pE4YA 
-- https://www.youtube.com/watch?v=GteJWhCikCk  
-
-CSS Grid: 
-- https://www.youtube.com/watch?v=uuOXPWCh-6o  
-- https://www.youtube.com/watch?v=EiNiSFIPIQE  
-
-Uusia HTML-toiminnallisuuksia: 
-- https://www.youtube.com/watch?v=LNmS6Mwwbf4 
+- https://nodejs.org/en/learn/getting-started/introduction-to-nodejs
+- https://docs.npmjs.com/about-npm
+- https://axios-http.com/docs/intro
+- https://www.youtube.com/watch?v=P3aKRdUyr0s
 
 
 ## Keskiviikko 
+**Autentikointi** (tunnistus) on oleellinen osanen missä hyvänsä verkossa pyörivässä palvelussa. Web-maailman kaksi perustavaa autentikointimetodia ovat **istunnot** (sessions) ja **tokenit** (tokens).
 
-Siirrytään tietokantojen perusteisiin. Asennetaan koneelle [XAMPP](https://www.apachefriends.org/). XAMPP on ohjelmistopaketti, joka sisältää Apache-verkkopalvelimen, MySQL (tai MariaDB)-tietokannan ja PHP-tulkin.  
+### Istunnot
+Istuntoihin perustuva tunnistus toimii niin, että kun käyttäjä ottaa yhteyden palvelimeen, hän aloittaa lähettämällä sille käyttäjänimen ja salasanan. Palvelin tarkistaa omasta kannastaan, onko kyseisellä käyttäjänimellä rekisteröity käyttäjää, ja vastaavatko käyttäjänimi ja salasana toisiaan. Jos näin on, palvelin luo käyttäjälle **istunnon** eli **session**, ja lähettää istunnon tunnisteen (session id) takaisin käyttäjän selaimelle Set-Cookie -vastausotsakkeessa.
 
-Asentamisen jälkeen avaa XAMPP Control Panel, ja käynnistä sieltä **Apache** ja **MySQL**-palvelut.
+Tästä eteenpäin aina kun käyttäjä yrittää tehdä jotain palvelimen resursseilla, selain lähettää automaattisesti palvelimen asettaman tunnisteen http-pyynnön ohessa evästeenä (cookie). Palvelin tarkastaa, että tunnistetta vastaava istunto on olemassa ja voimassa, ja antaa käyttäjälle pääsyn niihin resursseihin, joihin hänellä on oikeus. Kun käyttäjä kirjautuu ulos, palvelin poistaa istunnon käytöstä.
 
-![xampp](kuvat/xampp.png)
+Istuntojen tapauksessa siis **palvelin** säilöö tiedon palveluun kirjautuneista käyttäjistä.
 
-Etsi XAMPP-asennuskansiosta kansio nimeltä `htdocs`. Tämä on web-serverin kotikansio: jos sijoitat tähän kansioon HTML- tai PHP-tiedostoja, Apache tarjoilee ne osoitteessa http://localhost. Sijoitamme tehtävän 2 PHP-koodit tänne. 
+### Tokenit
+Tokeniin perustuva tunnistus puolestaan toimii niin, että ensin käyttäjä kirjautuu palveluun samalla tavoin kuin edellisessä esimerkissä, mutta palvelin ei säilö tietoa kirjautumisesta, vaan käyttäjän tunnistamisen jälkeen se luo **tokenin** eli tietopaketin, joka sisältää palvelun käytön kannalta tarvittavat tiedot (esim. tokenin voimassaoloajan, käyttäjän id:n, käyttöoikeustiedot, nimen ja sähköpostiosoitteen). Tokeni on kryptografisesti allekirjoitettu niin, että se voidaan luotettavasti tunnistaa palvelimen luomaksi, eikä sitä pysty muokkaamaan jälkikäteen. Web-maailmassa tokeni yleensä tarkoittaa JWT:tä eli [JSON Web Tokenia](https://jwt.io/).
 
-Lisäksi XAMPP tarjoaa web-käyttöliittymän MySQL-tietokantaan osoitteessa http://localhost/phpmyadmin. Jos PHPMyAdmin kysyy tunnuksia, kirjaudu sisään käyttäjänimellä 'root' ilman salasanaa. 
+Palvelin palauttaa tämän tokenin takaisin käyttäjälle, ja tämän jälkeen asiakassovellus sisällyttää sen jokaiseen palvelinkutsuun. Tokeni voidaan palauttaa evästeessä tai pyynnön **Authentication**-otsakkeessa. Palvelin tunnistaa käyttäjän ja tarkistaa tämän valtuutuksen tarkistamalla, että allekirjoitus vastaa tokenin tietosisältöä. Palvelimen ei siis tarvitse erikseen pitää kirjaa, onko käyttäjä kirjautunut vai ei.
 
+Tässä tunnistuskeinossa siis tieto kirjautumisesta säilytetään käyttäjän päässä eli **asiakassovelluksella.**
 
-### Tehtävä 1: luodaan taulut yksinkertaista tilavarausjärjestelmää varten 
+### CORS
+Kun sovellukseen lisätään tunnistautuminen, pitää samalla ottaa käyttöön CORS-mekanismi [(Cross-Origin Resource Sharing)](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS). CORS vaatii, että HTTP-vastauksessa on asetettu tietyt otsakkeet oikein, ks. https://royportas.com/posts/cors-python/ 
 
-- Avaa [PHPMyAdmin](http://localhost/phpmyadmin) 
-- Luo uusi tietokanta nimeltä **tilavaraus**
-- Luo tähän kantaan taulut nimeltä **tilat**, **varaajat** ja **varaukset**.
+### Tehtävä 1: istuntopohjainen kirjautuminen
 
-![tietokanta](kuvat/tietokanta.png)
-- Lisää tilat-tauluun sarakkeet **id** (INT, AUTO_INCREMENT) ja **tilan_nimi** (VARCHAR) 
+Lisätään tietokantaan uusi taulu nimeltä **kayttajat,** ja siihen sarakkeet **tunnus,** **nimi** ja **salasana.** Tässä harjoituksessa voidaan säilöä salasanat ilman salausta, mutta tietenkään missään todellisessa järjestelmässä ei niin tehdä.
 
-![tilat](kuvat/tilat.png)
-- Varaajat-tauluun **id** (INT, AUTO_INCREMENT) ja **varaajan_nimi** (VARCHAR) 
+Katso mallia sivulta https://medium.com/@thedavidgorski/cookie-based-session-management-feae404c709a, ja luo palvelimelle tarvittavat endpointit käyttäjän istuntopohjaiseen tunnistamiseen. Sisäänkirjautumiseen käytetään POST-kutsua, ja frontendillä kutsun luomiseen voidaan käyttää HTML-lomaketta esim. seuraavaan tyyliin:
 
-![varaajat](kuvat/varaajat.png)
-- Varaukset-tauluun **id** (INT, AUTO_INCREMENT), **varaaja** (INT), **tila** (INT) ja **varauspaiva** (DATE) 
-
-![varaukset](kuvat/varaukset.png)
-- Luo indeksit varaukset-taulun varaaja- ja tila-kentille
-
-![indeksi](kuvat/indeksi.png)
-- Yhdistä varaajat- ja tilat-taulujen id-kentät varaukset-taulun varaaja- ja tila-kenttiin suunnittelija-näkymässä ([designer](http://localhost/phpmyadmin/index.php?route=/database/designer&db=tilavaraus)) 
-
-![designer](kuvat/designer.png)
-- Lisää lopuksi kaikkiin tauluihin muutama rivi tietoa: ensin varaaja- ja tila-tauluihin ja sitten varaustauluun. 
- 
-### Tehtävä 2: luodaan tauluihin web-käyttöliittymä 
-
-Luodaan htdocs-kansioon PHP-pohjainen sivusto, jossa tietokannan tauluja voi tarkastella, ja lisätä ja poistaa niihin rivejä. Tee kullekin taululle oma sivu jossa taulun sisällöt listataan esim. `table`-elementissä. Lisää kullekin riville painike, josta kyseisen rivin tiedot voi poistaa, ja listan alle lomakkeen, jolla rivejä voi lisätä.
-
-PHP-tiedostot toimivat niin, että niissä voi olla normaalia HTML-koodia, mutta sen joukkoon voi sijoittaa PHP-skriptiä kirjoittamalla sen `php`-tagin sisään: `<?php ...php-koodia... ?>`. Kun selain pyytää PHP-tiedostoa, serveri suorittaa ja evaluoi PHP-koodit, ja palauttaa selaimelle HTML:n, jossa on evaluoinnin tulokset. 
-
-Esimerkiksi voimme luoda ruokalistan iteroimalla `$menu` –muuttujaa, jossa ruoat ovat listamuodossa: 
-
-```php
-<ul> 
-    <?php 
-        foreach($menu as $ruoka) { 
-            echo "<li>" . $ruoka . "</li>"; 
-        } 
-    ?> 
-</ul> 
-```
-Evaluoinnin jälkeen serveri palauttaa esim. jotain tämän näköistä: 
 ```html
-<ul> 
-    <li>Hampurilainen</li> 
-    <li>Pizza</li> 
-    <li>Nuudeli</li> 
-    <li>Kaurapuuro</li> 
-</ul> 
+<form method="POST" action="/login">
+    <input type="text" name="username" placeholder="Käyttäjätunnus"/>
+    <input type="password" name="password" placeholder="Salasana"/>
+    <input type="submit" value="Lähetä"/>
+</form>
 ```
-Tietokantaan otetaan yhteys ja sieltä kysellään tietoa esim. näin: 
-```php
-<?php 
-    $host= "localhost"; 
-    $username = "dbuser"; 
-    $database = "somedb"; 
-    $password = "password"; 
-    try { 
-        $yhteys = new PDO("mysql:host=$host;dbname=$database", $username, $password); 
-        $yhteys->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); 
-    } 
-    catch(PDOException $e){ echo "<p>".$e->getMessage()."<p>"; } 
-    $sql_lause =  "SELECT * FROM table"; 
-    try { 
-        $query= $yhteys->prepare($sql_lause); 
-        $query->execute(); 
-    }  
-    catch (PDOException $e) { die("VIRHE: " . $e->getMessage()); } 
-    $result= $query->fetchAll(); 
-?> 
-```
-#### Resurssit: 
 
-- https://www.apachefriends.org/  
-- https://www.tutorialspoint.com/phpmyadmin/phpmyadmin_databases.htm 
-- https://www.w3schools.com/php/default.asp 
-- https://www.w3schools.com/php/php_mysql_intro.asp 
-- https://www.w3schools.com/php/php_forms.asp  
+Kun tämän lomakkeen kentät täytetään ja painetaan Lähetä-painiketta, se lähettää POST-tyyppisen HTTP-kutsun polkuun `/login`, ja sen mukana menee POST-parametrit `username` ja `password`, joiden arvoina on kenttiin syötetyt tiedot.
+ 
+### Tehtävä 2: token-pohjainen kirjautuminen 
+
+Toteutetaan token-pohjainen kirjautuminen käyttäjen JWT:tä. Pythonille on olemassa kirjasto nimeltä [PyJWT](https://pyjwt.readthedocs.io/en/stable/), jossa on tarvittavat metodit JWT:iden luomiseen ja validointiin, ks. https://mayurbirle.medium.com/demystifying-jwt-authentication-with-python-b4302c39bf91. Turvallisin tapa välittää JWT selaimen ja palvelimen välillä on asettaa se **httponly-evästeeseen**. Asiakassovelluksen JavaScript ei pääse tarkastelemaan tällaisia evästeitä, joten riski sen joutumisesta vääriin käsiin on näin pienempi.
+
+#### Resurssit: 
+- https://jwt.io/
+- https://www.youtube.com/watch?v=UBUNrFtufWo
+- https://www.youtube.com/watch?v=Y2H3DXDeS3Q
+
 
 ## Torstai 
 
-Harjoitellaan Pythonin virtuaaliympäristön pystyttämistä, kirjaston asentamista ja tietokantojen kanssa työskentelyä. 
+Tämä voi olla sopiva ajankohta jakaa ryhmä frontend- ja backend-tiimeihin. FE-tiimi alkaa perehtyä Reactiin ja Backend-tiimi Djangoon. Full stack-osaamisesta kiinnostuneet voivat toki tehdä molemmat tehtävät.
 
-Varsinaisessa projektissa tullaan käyttämään [Django-frameworkkia](https://www.djangoproject.com/), jossa on omat luokat tietokantojen käsittelyyn ja näkymien rakentamiseen, mutta käytetään tässä verryttelyharjoituksessa kevyempiä työkaluja. 
+### Frontend
+**React** on tämän hetken luultavasti suosituin JavaScript-frontend-framework. Se perustuu itse luotaviin reaktiivisiin komponentteihin, joista näkymät rakennetaan HTML:n lomaan. Komponentit pystyvät ottamaan vastaan dataa (properties, props) isäntäkomponenteilta, ja liipaisemaan tapahtumia (events), jotka isäntäkomponentti voi ottaa vastaan. React-projektit aloitetaan yleensä luomalla projektiaihio erillisellä projektityökalulla. Reactin omaa Create-React-Appia ei enää tueta, vaan Reactin [omilla sivuilla](https://react.dev/learn/build-a-react-app-from-scratch) käyttäjä ohjeistetaan käyttämään kolmannen osapuolen sovelluksia. Näistä [Vite](https://vite.dev/guide/) lienee suosituin.
 
-### Tehtävä: SQLite-kannan käsittely ja cli-käyttöliittymä 
+### FE-tehtävä: React-tutoriaali
+Perehdy Reactin perustoiminnallisuuksiin Reactin [omien sivujen](https://react.dev/learn) kautta. Toteuta sen jälkeen Reactin [ristinolla-tutoriaali](https://react.dev/learn/tutorial-tic-tac-toe).
 
-Navigoidaan terminaalilla kansioon, johon projekti halutaan tehdä, ja annetaan komento `python –m venv venv`. Tämä luo suljetun virtuaaliympäristön, johon voidaan asentaa kirjastoja paikallisesti niin, että koneella olevien eri projektien kirjastot eivät sotke toisiaan. Virtuaaliympäristö käynnistetään Windowsissa komennolla `venv\Scripts\activate`, minkä jälkeen ympäristöön voi asentaa kirjastoja `pip`-komennolla. 
+### Backend
 
-SQLite on kevyt SQL-tietokantamoottori, joka sisältyy useimpiin uusiin käyttöjärjestelmiin. Tehtävänä on toteuttaa Pythonilla ja SQLitellä sama rakenne kuin edellisessä XAMPP-tehtävässä, eli tilanvaraustietokanta. Lisäksi toteutetaan tekstipohjainen käyttöliittymä, jolla käyttäjä voi tarkastella ja muokata taulujen sisältöä. Jos Python on tuttu, voit lisätä haastavuutta toteuttamalla käyttöliittymän graafisesti esim. TKInter-kirjastolla.
+[**Django**](https://www.djangoproject.com/) on suosittu framework web-palveluiden backendien toteuttamiseen. Django on suunniteltu helposti käyttöönotettavaksi, ja sen mukana tulee valmiita toiminnallisuuksia, kuten autentikointi ja dynaamisesti generoitu admin-näkymä.
 
-Käyttöliittymän voi toteuttaa tekstimenujen avulla tähän tyyliin:
+### BE-tehtävä: Django-tutoriaali
+Perehdy Djangon perustoiminnallisuuksiin sen [omien sivujen](https://docs.djangoproject.com/en/5.1/) kautta ja toteuttamalla [harjoittelututoriaali](https://docs.djangoproject.com/en/5.1/intro/tutorial01/).
 
-```
-Tervetuloa tilanvaraussovellukseen!
+### Resursseja
+#### React
+- https://react.dev/learn
+- https://www.w3schools.com/react/default.asp
+- https://www.youtube.com/watch?v=Tn6-PIqc4UM
+- https://www.youtube.com/watch?v=hn80mWvP-9g
 
-1. Listaa varaukset
-2. Listaa varaajat
-3. Listaa tilat
-4. Poistu
-
-Valitse toiminto (1-4): 
-```
-
-**SQLite3**-kirjasto tulee Pythonin mukana, mutta asennetaan taulujen esittämistä helpottamaan **Tabulate**-kirjasto komennolla `pip install tabulate`. 
-
-Pythonin SQLitellä käytetään tietokantaa tiedostosta `database.db` seuraavasti: 
-```python
-import sqlite3 
-from tabulate import tabulate 
-
-conn = sqlite3.connect('database.db') 
-cursor = conn.cursor() 
-
-cursor.execute('''SELECT * FROM table;''') 
-rows = cursor.fetchall() 
-if rows: 
-    print(tabulate(rows, headers=["ID", "Value"], tablefmt="grid")) 
-else: 
-    print("No rows in table.") 
-```
-
-Komento `sqlite3.connect('database.db')` tarkistaa, onko tuon nimistä tiedostoa jo olemassa, ja ellei ole, se luo sen.
-
-#### Resursseja: 
-- https://www.sqlite.org/
-- https://www.geeksforgeeks.org/python-sqlite/  
-- https://www.tutorialspoint.com/sqlite/sqlite_python.htm 
-- https://pypi.org/project/tabulate/ 
-- https://docs.python.org/3/library/tkinter.html
+#### Django
+- https://www.djangoproject.com/start/
+- https://www.w3schools.com/django/
+- https://www.youtube.com/watch?v=qcJZN1pvG6A
 
 ## Perjantai 
 
-Jatketaan Pythonin parissa: tällä kertaa otetaan käyttöön sen HTTP-kirjasto, ja perehdytään, miten MySQL-kantojen kanssa toimitaan. 
+### Frontend
+Harjoitellaan datan hakemista APIsta ja perehdytään reititykseen.
 
-### Tehtävä: HTTP-backend MySQL-tietokannalle 
+Tutustu tutoriaaliin sivulla https://medium.com/@xspaces2011/fetching-data-from-apis-in-react-js-d7bcac7f7637. Sivulla esitellään yksinkertainen esimerkki, jossa haetaan dataa rajapinnasta ja esitetään se komponentissa. Esimerkkiin sisältyy myös datan latauksen viiveen ja mahdollisen virheen käsittely.
 
-Tehdään XAMPP-tehtävän MySQL-kantaa käyttävä web-käyttöliittymä, joka pyörii Pythonilla toteutetun web-serverin päällä. Käytämme HTTP-palvelimen luomiseen Pythonin standardikirjastoon kuuluvaa HTTP-kirjastoa. MySQL:ää varten täytyy asentaa ajuri: `pip install mysql-connector-python`. 
+Huomaat, että esimerkissä on käytetty JavaScriptin sisäänrakennettua Fetch-apia eikä aiemmin käytettyä Axios-kirjastoa. Axios kehitettiin alunperin ennen kuin Fetch-apia oli olemassa, ja silloin sellaiselle kirjastolle oli kysyntää. Axios on hitusen helpompi käyttää, mutta jos haluat putsata projektistasi turhat riippuvuudet, se on varmaan karsintalistan kärkipäässä.
 
-Yksinkertainen HTML:ää tarjoileva palvelin rakentuu esim. näin:
+React on tarkoitettu **yhden sivun sovellusten** (single-page application) toteuttamiseen. Tämä tarkoittaa sitä, että vaikka sovelluksessa on navigointi, ja vaikka selaimen osoitepalkin polku muuttuu, selain ei todellisuudessa avaa uutta sivua, vaan kaikki siirtymät tapahtuvat ohjelmallisesti React-sovelluksen sisällä. Meidän ei kuitenkaan tarvitse rakentaa reitityslogiikkaa tyhjästä, vaan siihen on olemassa olemassaolevia kirjastoja, esim. [React Router](https://reactrouter.com/en/main/start/overview).
 
-```python
-from http.server import HTTPServer, BaseHTTPRequestHandler
+### FE-tehtävä: React-frontend tilavaraukseen
+Käytetään backendinä maanantaina luotua REST-frameworkkia, tai vaihtoehtoisesti voit muodostaa työparin jonkun BE-kaverin kanssa, ja tehdä fronttisi hänen luomaansa backendiä vasten.
 
-class myHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-Type', 'text/html')
-        self.end_headers()
-        self.wfile.write(b'<h1>Hello world</h1>')
+Toteuta React-sovellus, joka sisältää näkymät tilojen, varaajien ja varausten tarkasteluun, lisäämiseen ja poistamiseen. Käytä näkymien välillä navigointiin React Routeria. Rakenna näkymät komponenteista, ja mieti niitä tehdessäsi, mitkä niistä voisivat olla monikäyttöisiä, ja mitä ehkä käytetään vain yhdessä näkymässä. Tähän ei välttämättä ole yhtä oikeaa ratkaisua! Kokeilemalla erilaisia ratkaisuja saa tuntuman siihen, mikä ovat erilaisten rakenteiden hyödyt ja haitat.
 
-server = HTTPServer(('localhost', 8000), myHandler)
-server.serve_forever()
-```
+### Backend
+Koska toteutamme Djangolla vain APIn emmekä esimerkiksi julkaisujärjestelmää, asennamme sen rinnalle [Django REST Frameworkin](https://www.django-rest-framework.org/), joka on nimenomaan REST-rajapintojen rakentamiseen Djangolla suunniteltu työkalupakki. Se sisältää mm. [serialisoijia](https://www.django-rest-framework.org/api-guide/serializers/) kannasta haetun datan konvertoimiseen haluttuun tietomuotoon, ja kätevän automaattisesti generoituvan [web-API:n](https://www.django-rest-framework.org/topics/browsable-api/) debuggausta ja FE-kehitystä varten.
 
-...ja paikalliseen MySQL-palvelimeen otetaan yhteys tähän tapaan:
+### BE-tehtävä: DRF-backend tietokantaan
+Toteutetaan REST API tilavaraustietokantaan DRF:ää käyttäen. Luo CRUD-endpointit tilat-, varaajat- ja varaukset-tauluihin.
 
-```python
-import mysql.connector
+### Resursseja
+#### React
+- https://medium.com/@xspaces2011/fetching-data-from-apis-in-react-js-d7bcac7f7637
+- https://reactrouter.com/en/main/start/overview
+- https://www.youtube.com/watch?v=oTIJunBa6MA
 
-db_host = "localhost"
-db_user = "varaus-admin"
-db = "tilavaraus"
-db_password = "varaus-admin"
-
-mydb = mysql.connector.connect(
-    host = db_host,
-    user = db_user,
-    password = db_password,
-    database = db
-)
-
-mycursor = mydb.cursor()
-mycursor.execute("SELECT * FROM varaajat;")
-result = mycursor.fetchall()
-mycursor.close()
-print(result)
-```
-
-Luo ensin näkymät taulujen sisällön tarkastelua varten. Jos ehdit, toteuta myös rivien lisääminen ja poistaminen. Voit rakentaa HTML-näkymät käsin, tai halutessasi voit käyttää jotain template-kirjastoa kuten [Jinja](https://jinja.palletsprojects.com/en/stable/). 
-
-Resurssit: 
-- https://www.w3schools.com/python/python_mysql_getstarted.asp 
-- https://anshu-dev.medium.com/creating-a-python-web-server-from-basic-to-advanced-449fcb38e93b 
-- https://jinja.palletsprojects.com/en/stable/ 
+#### DRF
+- https://www.django-rest-framework.org/
+- https://dev.to/msnmongare/title-building-a-food-api-with-django-and-mysql-5b12
+- https://www.youtube.com/watch?v=cJveiktaOSQ
