@@ -204,6 +204,10 @@ Kun tämän lomakkeen kentät täytetään ja painetaan Lähetä-painiketta, se 
 
 Toteutetaan token-pohjainen kirjautuminen käyttäjen JWT:tä. Pythonille on olemassa kirjasto nimeltä [PyJWT](https://pyjwt.readthedocs.io/en/stable/), jossa on tarvittavat metodit JWT:iden luomiseen ja validointiin, ks. https://mayurbirle.medium.com/demystifying-jwt-authentication-with-python-b4302c39bf91. Turvallisin tapa välittää JWT selaimen ja palvelimen välillä on asettaa se **httponly-evästeeseen**. Asiakassovelluksen JavaScript ei pääse tarkastelemaan tällaisia evästeitä, joten riski sen joutumisesta vääriin käsiin on näin pienempi.
 
+### Bonustehtävä keskiviikolle 14.5.2025
+
+Avaa osoitteesta http://194.197.245.5/opettajat/topi/sql-inject/index.php löytyvä PHP-foorumi. Foorumi on hyvin naiivisti toteutettu, eikä siinä ole juuri tietoturvaa. Sinä olet käyttäjä `teppo`, salasana `teppo123`. Kokeile erilaisia keinoja sabotoida foorumia tai kirjautua eri käyttäjänä. Älä kuitenkaan poista tauluja tai kantoja!
+
 #### Resurssit: 
 - https://jwt.io/
 - https://www.youtube.com/watch?v=UBUNrFtufWo
