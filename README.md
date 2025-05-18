@@ -1,277 +1,638 @@
-### [<- Viikko 20](./viikko-20.md)
-# Viikko 21
-## Maanantai 
-Perehdytään HTTP:een ja RESTiin tarkemmin.
+### [<- Viikko 21](./viikko-21.md)
+# Viikko 22
+## Maanantai
+### Frontend
 
-### HTTP
+Tiedon välittämiseen komponentilta toiselle käytetään Reactissa **propseja** ja **eventtejä**, mutta joskus jotain tietoa tarvitaan joko niin kaukana sitä säilyttävästä komponentista, tai niin monessa paikkaa sovelluksessa, että tämä voi johtaa ns. *prop drilling*-ilmiöön, jossa tietoa joudutaan passaamaan pitkien komponenttihierarkioiden läpi. Tällaisia tilanteita varten Reactissa on [Context API](https://react.dev/learn/passing-data-deeply-with-context). Konteksti on kätevä tapa hallita esim. väriteemaa, kirjautumista tai vaikkapa ostoskoria.
 
-**HTTP (HyperText Transfer Protocol)** on webin perustana oleva tilaton tiedonsiirtoprotokolla, jolla perinteisesti tarjoiltiin html-sivuja palvelimelta selaimille. Tämä on yhä sen keskeinen käyttötarkoitus, mutta nykyisin sen yli liikkuu myös muunlaista dataa, usein **REST (REpresentational State Transfer)**-arkkitehtuuria käyttäen.
+### FE-Tehtävä
 
-HTTP-liikenne koostuu **HTTP-pyynnöistä (HTTP request)** ja **HTTP-vastauksista (HTTP-response):** asiakassovellus lähettää **pyynnön,** jonka vastaanottava palvelin käsittelee, ja palauttaa siihen **vastauksen.**
+Lisäsimme viime viikolla tilavarauskantaan **kayttajat**-taulun, jossa on varausjärjestelmän käyttäjien tietoja. Lisätään tauluun kenttä **rooli**, jonka arvo on joko `"user"` tai `"admin"`. Meillä pitäisi myös olla viime viikolla toteutettu http-backend, jossa on endpoint kirjautumista varten.
 
-HTTP-viestit sisältävät seuraavat osat:
-- **Aloitusrivi (Start line),** joka kertoo käytetyn HTTP-version, sekä pyynnössä käytetyn HTTP-metodin, ja vastauksessa statuskoodin
-- **Otsakkeet (Headers),** jotka sisältävät viestin metadataa kuten sisällön datatyypin ja esim. yhteyden ylläpitoon ja autentikointiin liittyviä tietoja
-- Valinnainen **viestirunko (Body),** joka sisältää varsinaisen siirrettävän datan
+Toteutetaan varausjärjestelmän frontendiin lomake, joka kysyy käyttäjänimeä ja salasanaa ja lähettää ne kirjautumis-endpointtiin. Backend tarkastaa ovatko kirjautumistiedot valideja, ja jos ovat, palauttaa frontille käyttäjän tiedot sekä istunnon tunnuksen tai tokenin. Frontend tallettaa tiedon kirjautumisesta kontekstiin, ja antaa sen perusteella käyttäjälle mahdollisuuden päästä käsiksi eri toimintoihin:
 
-Yksikertainen HTTP-pyyntö voi olla esim. tämän näköinen:
+- ilman kirjautumista käyttäjä ei pääse järjestelmään ollenkaan
+- user-roolin käyttäjä voi tarkastella kaikkia tietoja ja luoda uusia varauksia
+- admin-roolin käyttäjä voi muokata myös tiloja ja käyttäjiä.
+
+Frontend myös huolehtii siitä, että tunnistautuminen toteutetaan niin kuin backend sitä tarvitsee. Jos backend asettaa tokenin tai istuntotunnuksen evästeeseen, selain palauttaa sen automaattisesti, eikä frontin tarvitse käsitellä niitä erikseen. API-kutsuun käytettävä kirjasto kuitenkin pitää yleensä konfiguroida niin, että se käyttää tunnistautumista, esim:
+
+```JavaScript
+fetch('/api/endpoint', {
+  method: 'GET',
+  credentials: 'include'
+});
 ```
-POST /users HTTP/1.1
-Host: example.com
-Content-Type: application/json
-Content-Length: 40
 
-{
-    "name": "John Doe",
-    "age": 30
-}
+tai:
 
+```JavaScript
+axios.get('/api/endpoint', { withCredentials: true });
 ```
-- Aloitusrivillä määritellään, että kyseessä on **POST**-tyyppinen pyyntö (eli halutaan luoda uusi resurssi) polkuun **/users**, ja käytetty HTTP-versio on **1.1**. (1.1 on yhä laajasti käytetty, mutta versiot 2 ja 3 tarjoavat suorityskykyparannuksia)
-- Aloitusrivin jälkeen on otsakkeet Host, Content-Type ja Content-Length:
-    - **Host** kertoo URL:n, johon yhteys otetaan
-    - **Content-Type** kertoo missä muodossa viestirungon tieto on (tässä tapauksessa JSON, toinen yleinen muoto on application/x-www-form-urlencoded eli URL-parametrimuodossa annettu lomakedata)
-    - **Content-Length** kertoo minkä mittainen viestirunko on (40 merkkiä)
-- Lopuksi tyhjän rivin jälkeen on viestirunko, joka sisältää **JSON**-muotoisen datapaketin
 
-HTTP-vastaus puolestaan voi näyttää esim. tällaiselta:
-```
-HTTP/1.1 201 Created
-Content-Type: application/json
-Location: http://example.com/users/123
+Jos backend haluaa tokenin **Authorization** -headerissa, se täytyy asettaa frontissa käsin, esim:
 
-{
-  "message": "New user created",
-  "user": {
-    "id": 123,
-    "name": "John Doe",
-    "age": 30
+```JS
+fetch('/api/endpoint', {
+  method: 'GET',
+  headers: {
+    'Content-type': 'application/json',
+    'Authorization': `Bearer ${token}`
   }
-}
+});
 ```
 
-- Aloitusrivillä on ensin käytetty **HTTP**-versio (1.1), kolminumeroinen **statuskoodi** sekä **statusteksti**
-- Sen jälkeen on otsakkeet Content-Type ja Location:
-    - **Content-Type** kertoo taas viestirungon formaatin
-    - **Location** on uudelleenohjauksessa käytetty otsake. 201-tyyppisessä vastauksessa se kertoo osoitteen, josta luotu resurssi löytyy
-- Lopuksi tyhjän rivin jälkeen on viestirunko, joka tässä tapauksesssa sisältää **vastausviestin** sekä **luodun resurssin tiedot**
-
-### REST
-
-REST on ohjelmointirajapintojen toteuttamiseen tarkoitettu arkkitehtuurityyli. Sen kantavat periaatteet ovat:
-1. Asiakas-palvelinmalli
-2. Tilattomuus
-3. Välimuistin hyödyntäminen
-4. Yhdenmukainen rajapinta
-5. Kerrostettu järjestelmä
-
-REST perustuu siihen, että palvelinta voidaan pyytää toteuttamaan erilaisia toimenpiteitä (luominen, lukeminen, päivittäminen ja poistaminen, CRUD) eri resursseihin. Resurssit on eritelty *endpointeilla* eli osoitteilla. Esimerkiksi voimme lähettää DELETE-pyynnön osoitteeseen `tilavaraus.fi/tilat/5`. Tässä otamme yhteyden palvelimeen, joka sijaitsee osoitteessa `tilavaraus.fi`, ja haluamme kohdistaa operaation resurssiin `/tilat/5`, eli tilaresurssiin, jonka ID on 5. RESTiä käytettäessä tietoa siirretään yleensä JSON-muodossa.
-
-REST-rajapintojen testaamiseen ja debuggaamiseen on useita työkaluja. Suosituin niistä on luultavasti **Postman.** Postmanilla voidaan lähettää halutun muotoisia HTTP-kutsuja halutuilla parametreilla, ja tarkastella palautunutta HTTP-vastausta. Alla olevassa kuvassa on lähetetty GET-pyyntö osoitteeseen `http://data.foli.fi/siri/sm/1`, ja alla näkyy osa palvelimen palauttamaa JSON-dataa:
-
-![Postman](kuvat/postman.png)
-
-Lisäksi web-sovellusta kehitettäessä lähteviä ja palautuvia HTTP-viestejä voi tarkastella selaimen kehitystyökaluilla **Network**-näkymästä. Kehitystyökalut avautuvat yleisimmillä selaimilla F12-painikkeella:
-
-![Dev tools](kuvat/dev-tools.png)
-
-### Harjoituksia
-
-Perehdy sivustolla [data.foli.fi/doc/index](https://data.foli.fi/doc/index) annettuihin dokumentaatioihin, ja testaa HTTP-pyyntöjä sivun rajapintoja vasten käyttäen Postmania ja selaimen kehitystyökaluja.
-
-### Tehtävä
-
-Luo Pythonilla REST API aiemmin luodulle tilavarauskannalle. Käytetään tässä samoja palikoita kuin viime perjantain web-palvelintehtävässä, eli http-kirjaston serveriä ja mysql-connectoria:
-- Luo tauluille **tilat,** **varaajat** ja **varaukset** GET-endpointit, jotka palauttavat taulun rivit JSON-muodossa.
-- Luo myös POST-endpointit, jotka ottavat vastaan tarvittavat parametrit, jotta tauluihin voi luoda uusia rivejä
-- Luo DELETE-endpointit, joilla tauluista voi poistaa rivejä. Ota poistettavan resurssin id vastaan osana polkua, esim. `/varaajat/3`
-
-### Resursseja
-HTTP:
-- https://www.freecodecamp.org/news/what-is-http/
-- https://www.youtube.com/watch?v=iYM2zFP3Zn0
-
-REST:
-- https://www.freecodecamp.org/news/what-is-a-rest-api/
-- https://www.youtube.com/watch?v=Q-BpqyOT3a8
-
-
-## Tiistai 
-
-**Node** on JavaScript-ajoympäristö, jossa voidaan siis ajaa JavaScript-koodia suoraan tietokoneella selaimen ulkopuolella. Jotta Nodea voidaan käyttää, se pitää ensin ladata ja asentaa osoitteesta https://nodejs.org/en/download/prebuilt-installer.
-
-Nodea käytetään samaan tapaan kuin esim. Python-ajoympäristöä: kirjoittamalla terminaaliin komento `node` siirrytään Noden interaktiiviseen komentotulkkiin, jossa voidaan testata yksittäisiä JavaScript-komentoja. Toisaalta jos meillä on JavaScript-ohjelmatiedosto, annetaan komento `node [tiedostonnimi]`, jolloin Node suorittaa tiedostossa sijaitsevan koodin. Nodea voi käyttää myös palvelinkoodin kirjoittamiseen, mutta CodePointissa toteutamme backendin Pythonilla. Frontendin puolella hyödynnämme kuitenkin Noden moduulikirjastoja.
-
-Noden mukana koneelle asentuu [NPM](https://docs.npmjs.com/), joka on Noden pakettienhallintajärjestelmä. NPM-ekosysteemi on valtava ja koko ajan kasvava kokonaisuus erilaisia moduuleita ja kirjastoja. Nykyinen web-frontend-kehitys perustuu käytännössä NPM-moduuleihin.
-
-NPM otetaan projektissa käyttöön ajamalla projektikansiossa komento `npm init`, joka kyselee muutamia perustietoja, ja luo NPM:n konfiguraatiotiedoston nimeltä `package.json`. Tämä tiedosto sisältää projektin metatietoa, mukaanlukien projektiin asennetut NPM-moduulit eli riippuvuudet.
-
-Yleensä moduuleita käytetään osana frontend-frameworkkia kuten React tai Angular, mutta niiden koodi on normaalia JavaScriptiä, ja sitä voidaan käyttää myös "perinteiseen" tyyliin seuraavasti:
-
-Luo ja avaa projektikansio, ja aja `npm init`, jotta saadaan projekti alustettua. Aja sitten komento `npm intall axios`, joka asentaa Axios-kirjaston, joka helpottaa HTTP-kutsujen tekemistä ja käsittelyä JavaScriptissä. Jos nyt katsot kansiossa olevaa `package.json`-tiedostoa, huomaat, että sen dependencies-osioon on lisätty kohta Axios, ja projektikansioon on ilmestynyt kansio `node_modules`, jonka sisällä on Axios-moduulun koodi ja sen riippuvuudet.
-
-Luo kansioon tiedosto `index.html`, ja kopioi seuraava sisältö siihen:
-
-```html
-<!DOCTYPE html>
-<head>
-    <meta charset="UTF-8">
-    <title>Föli test</title>
-    <script defer src="./node_modules/axios/dist/axios.min.js"></script>
-    <script defer src="index.js"></script>
-</head>
-<body>
-    <h1>Föli pysäkin tiedot</h1>
-    <button onclick="getData()">Hae tiedot</button>
-    <ul id="stops-list"></ul>
-</body>
-</html>
-```
-
-Seuraavaksi luo tiedosto `index.js`, ja kopioi seuraava sisältö siihen:
+tai:
 
 ```js
-function getData() {
-    axios('http://data.foli.fi/siri/sm/672')
-        .then(d=>createList(d.data.result))
-}
-
-function createList(stops) {
-    const listEl = document.getElementById('stops-list')
-    for (let stop of stops) {
-        const el = document.createElement('li')
-        const departureTime = new Date(parseInt(stop.expecteddeparturetime) * 1000 )
-        const text = stop.lineref + ' ' + stop.destinationdisplay + ' ' + departureTime.toLocaleTimeString()
-        el.innerHTML = text
-        listEl.append(el)
+axios.get('/api/endpoint', {
+    headers: {
+        'Content-type': 'application/json',
+        'Authorization': `Bearer ${token}`
     }
+})
+```
+
+Voit tehdä tämän tehtävän myös yhteistyössä jonkun BE-ryhmäläisen kanssa niin, että käytät hänen tekemäänsä backendiä.
+
+### FE resursseja
+- https://dev.to/miracool/how-to-manage-user-authentication-with-react-js-3ic5
+- https://medium.com/@yogeshmulecraft/implementing-protected-routes-in-react-js-b39583be0740
+
+### Backend
+Django sisältää valmiit toiminnallisuudet tunnistamiseen ja valtuutukseen: `User`-mallin, `LoginView`:n ja `LogoutView`:n. Django käyttää autentikointiin oletusarvoisesti istuntoja. Django Rest Framework laajentaa tätä pohjaa lisätoiminnallisuuksilla kuten `SessionAuthentication-` ja `TokenAuthentication`-luokilla. DRF:ssä ei ole valmista tukea JWT:lle, mutta siihen voidaan käyttää kolmannen osapuolen kirjastoa kuten [simplejwt](https://django-rest-framework-simplejwt.readthedocs.io/en/latest/).
+
+Haluttu autentikointimetodi määritellään Djangon `settings.py`:ssä, esim:
+```Python
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
 }
 ```
 
-Asenna vielä VSCodeen laajennus [Live Preview](https://marketplace.visualstudio.com/items?itemName=ms-vscode.live-server). Tämä lisäke käynnistää yksinkertaisen HTTP-palvelimen, joka tarjoilee projektikansiossa olevia tiedostoja. Kun Live Preview on asennettu, avaa VSCoden komentopaletti näppäinyhdistelmällä <kbd>shift</kbd>+<kbd>ctrl</kbd>+<kbd>p</kbd>, kirjoita hakukenttään `live` ja valitse "Start Server":
+Ja tokenien luomiseen ja virkistämiseen voidaan käyttää esim. `simplejwt`:n sisäänrakennettuja endpointteja määrittelemällä niille polut projektin `urls.py`:ssä seuraavasti:
 
-![Live Preview](kuvat/live-preview.png)
+```Python
+from django.urls import path
+from rest_framework_simplejwt.views import (TokenObtainPairView, TokenRefreshView)
 
-Tämä avaa koodin viereen uuden paneelin, johon avautuu selainnäkymä osoitteeseen http://localhost:3000. Kun painat näkymässä olevaa painiketta, skripti hakee pysäkin 672 (Codepointin lähin bussipysäkki) tulevien bussien tiedot ja purkaa ne listariveiksi, jotka se sijoittaa HTML-koodissa olevan `<ul>` -elementin sisään. 
+urlpatterns = [
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    # other urls
+]
+```
 
-### Tehtävä 1: JS-client tilavaraukseen
-Katso mallia ylläolevasta esimerkistä, ja luo näkymät, jotka esittävät tilavarauskannan tiedot käyttäen aiemmin luodun REST API-palvelimen endpointteja. Voit tehdä kunkin taulun omaan HTML-tiedostoonsa, ja rakentaa niiden välille simppelin navigaation. Kun olet saanut taulujen sisällöt näkyviin, lisää näkymiin vielä rivien poistaminen ja lisääminen.
+Endpointin voi suojata käyttämällä DRF:n `permission_classes`-dekoraattoria esim. seuraavasti:
 
-#### Resursseja
-- https://nodejs.org/en/learn/getting-started/introduction-to-nodejs
-- https://docs.npmjs.com/about-npm
-- https://axios-http.com/docs/intro
-- https://www.youtube.com/watch?v=P3aKRdUyr0s
+```Python
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def protected_view(request):
+    return Response({"message": "This is a protected view accessible only with a valid token."})
+```
 
-## Keskiviikko 
-**Autentikointi** (tunnistus) on oleellinen osanen missä hyvänsä verkossa pyörivässä palvelussa. Web-maailman kaksi perustavaa autentikointimetodia ovat **istunnot** (sessions) ja **tokenit** (tokens).
+### BE-Tehtävä
+Luo `simplejwt`-kirjastoa käyttävä autentikointi ja auktorisointi, joka sallii user-rooliin kuuluvien käyttäjien tarkastella käyttäjiä, tiloja ja varauksia, ja luoda uusia varauksia. Admin-rooliin kuuluvat käyttäjät saavat täydet CRUD-oikeudet kaikkiin tauluihin.
 
-### Istunnot
-Istuntoihin perustuva tunnistus toimii niin, että kun käyttäjä ottaa yhteyden palvelimeen, hän aloittaa lähettämällä sille käyttäjänimen ja salasanan. Palvelin tarkistaa omasta kannastaan, onko kyseisellä käyttäjänimellä rekisteröity käyttäjää, ja vastaavatko käyttäjänimi ja salasana toisiaan. Jos näin on, palvelin luo käyttäjälle **istunnon** eli **session**, ja lähettää istunnon tunnisteen (session id) takaisin käyttäjän selaimelle Set-Cookie -vastausotsakkeessa.
+### BE-Resursseja
+- https://www.django-rest-framework.org/api-guide/authentication/
+- https://www.django-rest-framework.org/api-guide/permissions/
+- https://django-rest-framework-simplejwt.readthedocs.io/en/latest/
 
-Tästä eteenpäin aina kun käyttäjä yrittää tehdä jotain palvelimen resursseilla, selain lähettää automaattisesti palvelimen asettaman tunnisteen http-pyynnön ohessa evästeenä (cookie). Palvelin tarkastaa, että tunnistetta vastaava istunto on olemassa ja voimassa, ja antaa käyttäjälle pääsyn niihin resursseihin, joihin hänellä on oikeus. Kun käyttäjä kirjautuu ulos, palvelin poistaa istunnon käytöstä.
+## Tiistai 
+### Frontend
+Tiedon hakemisen lisäksi tietoa pitää usein voida myös lähettää frontista REST-rajapinnan suuntaan. Reactilla voidaan toki poimia lähetettävät tiedot mistä hyvänsä kentistä ja liipaista http-kysely millä eventillä halutaan, mutta yleensä on mielekästä hyödyntää HTML-lomakkeita. Selaimissa on paljon valmiita toiminnallisuuksia rakennettuna HTML:n `<forms>`-elementin ja kenttien kuten `<input>`, `<select>` ja `<textarea>` ympärille. Lomakkeiden käsittelyä helpottavat kirjastot käyttävät juuri näitä elementtejä lähtökohtana.
 
-Istuntojen tapauksessa siis **palvelin** säilöö tiedon palveluun kirjautuneista käyttäjistä.
-
-### Tokenit
-Tokeniin perustuva tunnistus puolestaan toimii niin, että ensin käyttäjä kirjautuu palveluun samalla tavoin kuin edellisessä esimerkissä, mutta palvelin ei säilö tietoa kirjautumisesta, vaan käyttäjän tunnistamisen jälkeen se luo **tokenin** eli tietopaketin, joka sisältää palvelun käytön kannalta tarvittavat tiedot (esim. tokenin voimassaoloajan, käyttäjän id:n, käyttöoikeustiedot, nimen ja sähköpostiosoitteen). Tokeni on kryptografisesti allekirjoitettu niin, että se voidaan luotettavasti tunnistaa palvelimen luomaksi, eikä sitä pysty muokkaamaan jälkikäteen. Web-maailmassa tokeni yleensä tarkoittaa JWT:tä eli [JSON Web Tokenia](https://jwt.io/).
-
-Palvelin palauttaa tämän tokenin takaisin käyttäjälle, ja tämän jälkeen asiakassovellus sisällyttää sen jokaiseen palvelinkutsuun. Tokeni voidaan palauttaa evästeessä tai pyynnön **Authentication**-otsakkeessa. Palvelin tunnistaa käyttäjän ja tarkistaa tämän valtuutuksen tarkistamalla, että allekirjoitus vastaa tokenin tietosisältöä. Palvelimen ei siis tarvitse erikseen pitää kirjaa, onko käyttäjä kirjautunut vai ei.
-
-Tässä tunnistuskeinossa siis tieto kirjautumisesta säilytetään käyttäjän päässä eli **asiakassovelluksella.**
-
-### CORS
-Kun sovellukseen lisätään tunnistautuminen, pitää samalla ottaa käyttöön CORS-mekanismi [(Cross-Origin Resource Sharing)](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS). CORS vaatii, että HTTP-vastauksessa on asetettu tietyt otsakkeet oikein, ks. https://royportas.com/posts/cors-python/ 
-
-### Tehtävä 1: istuntopohjainen kirjautuminen
-
-Lisätään tietokantaan uusi taulu nimeltä **kayttajat,** ja siihen sarakkeet **tunnus,** **nimi** ja **salasana.** Tässä harjoituksessa voidaan säilöä salasanat ilman salausta, mutta tietenkään missään todellisessa järjestelmässä ei niin tehdä.
-
-Katso mallia sivulta https://medium.com/@thedavidgorski/cookie-based-session-management-feae404c709a, ja luo palvelimelle tarvittavat endpointit käyttäjän istuntopohjaiseen tunnistamiseen. Sisäänkirjautumiseen käytetään POST-kutsua, ja frontendillä kutsun luomiseen voidaan käyttää HTML-lomaketta esim. seuraavaan tyyliin:
-
-```html
-<form method="POST" action="/login">
-    <input type="text" name="username" placeholder="Käyttäjätunnus"/>
-    <input type="password" name="password" placeholder="Salasana"/>
-    <input type="submit" value="Lähetä"/>
+Perusmuodossaan voimme luoda JSX:llä lomakkeen, esim:
+```JSX
+<form onSubmit={handleSubmit}>
+    <div>
+        <label htmlFor="username">Username:</label>
+        <input type="text" id="username" name="username" required />
+    </div>
+    <div>
+        <label htmlFor="password">Password:</label>
+        <input type="password" id="password" name="password" required />
+    </div>
+    <button type="submit">Login</button>
 </form>
 ```
 
-Kun tämän lomakkeen kentät täytetään ja painetaan Lähetä-painiketta, se lähettää POST-tyyppisen HTTP-kutsun polkuun `/login`, ja sen mukana menee POST-parametrit `username` ja `password`, joiden arvoina on kenttiin syötetyt tiedot.
- 
-### Tehtävä 2: token-pohjainen kirjautuminen 
+Tämä lomake liipaisee `handleSubmit`-funktion, kun **login** -painiketta painetaan. Funktiossa voimme poimia kenttiin syötetyt arvot lomakkeesta ja lähettää ne endpointille:
 
-Toteutetaan token-pohjainen kirjautuminen käyttäjen JWT:tä. Pythonille on olemassa kirjasto nimeltä [PyJWT](https://pyjwt.readthedocs.io/en/stable/), jossa on tarvittavat metodit JWT:iden luomiseen ja validointiin, ks. https://mayurbirle.medium.com/demystifying-jwt-authentication-with-python-b4302c39bf91. Turvallisin tapa välittää JWT selaimen ja palvelimen välillä on asettaa se **httponly-evästeeseen**. Asiakassovelluksen JavaScript ei pääse tarkastelemaan tällaisia evästeitä, joten riski sen joutumisesta vääriin käsiin on näin pienempi.
+```JS
+async function handleSubmit(e) {
+    // Estetään sivun virkistäminen, joka on oletustoiminnallisuus, kun lomakkeen lähetyspainiketta painetaan
+    e.preventDefault();
 
-### Bonustehtävä keskiviikolle 14.5.2025
+    // Poimitaan kenttien tiedot lomakkeesta (joka on event-objektin target)
+    const formData = new FormData(e.target);
+    const username = formData.get('username');
+    const password = formData.get('password');
 
-Avaa osoitteesta http://194.197.245.5/opettajat/topi/sql-inject/index.php löytyvä PHP-foorumi. Foorumi on hyvin naiivisti toteutettu, eikä siinä ole juuri tietoturvaa. Sinä olet käyttäjä `teppo`, salasana `teppo123`. Kokeile erilaisia keinoja sabotoida foorumia tai kirjautua eri käyttäjänä. Älä kuitenkaan poista tauluja tai kantoja!
+    // Kutsutaan endpointtia kenttien arvoilla
+    fetch('/api/login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+    })
+        .then(res => res.json())
+        .then(data => console.log('data', data))
+        .catch(error => console.error('virhe:', error));
+}
+```
 
-#### Resurssit: 
-- https://jwt.io/
-- https://www.youtube.com/watch?v=UBUNrFtufWo
-- https://www.youtube.com/watch?v=Y2H3DXDeS3Q
+Usein haluamme kuitenkin esim. käsitellä lomakkeen ja kenttien tiloja (muokattu, validoitu, lähetetty) tarkemmin, tai tarvitsemme tavallista monimutkaisempia validointisääntöjä tai dynaamisia kenttiä. Lomakkeiden käsittelyyn on olemassa omia kirjastoja, joilla nämä ja monet muut erikoistilanteet on paljon helpompi käsitellä. Käytetään näissä harjoituksissa [React Hook Form](https://react-hook-form.com/get-started):ia.
 
+Lyhyesti kuvaten RFH:ta käytetään niin, että lomakekomponentissa destrukturoimme `useForm`-hookista halutut metodit ja ominaisuudet:
+
+```JS
+  const { register, handleSubmit, watch, formState: { errors } } = useForm()
+```
+
+JSX:ssä lomakkeen `onSubmit`-käsittelijälle annetaan useFormista purettu `handleSubmit`, ja sille annetaan parametriksi meidän oma funktio, jolla lähetys käsitellään. Kentät rekisteröidään `register`-metodilla, ja niille voidaan konfiguroida erilaisia validointisääntöjä, joiden virheet React Hook Form päivittää dynaamisesti `formStaten` `errors` -propertyyn:
+
+```JSX
+<form onSubmit={handleSubmit(onSubmit)}>
+    <label htmlFor="username">Username</label>
+    <input id="username" {...register('username', { required: 'Username is required' })} /><br>
+    {errors.username && <p>{errors.username.message}</p>}
+
+    <label htmlFor="password">Password</label>
+    <input type="password" id="password" {...register('password', { required: 'Password is required' })} /><br>
+    {errors.password && <p>{errors.password.message}</p>}
+    
+    <button type="submit">Login</button>
+</form>
+```
+
+RHF:n handleSubmit purkaa kenttien arvot meille valmiiksi paketiksi, mikä vähentää boilerplatea lähetyksen käsittelyfunktiosta:
+```JS
+    function onSubmit(data) {
+        fetch('/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+        .then(res => res.json())
+        .then(data => console.log('data', data))
+        .catch(error => console.error('virhe:', error));
+    }
+```
+
+### FE-tehtävä
+
+Asenna FE-ympäristöön React Hook Form komennolla `npm install react-hook-form`. Päivitä tilavaraus-frontin lomakkeet käyttämään React Hook Formia. Lisää lomakkeisiin mielekkäitä validointisääntöjä (pakollisuuksia, pituusrajoituksia, minimi- ja maksimiarvoja ja patterneja) kokeilemalla eri vaihtoehtoja, ks. https://react-hook-form.com/docs/useform/register 
+
+### FE-resursseja
+- https://react-hook-form.com/
+- https://medium.com/@wteja/mastering-form-validation-with-react-hook-form-a-comprehensive-guide-5c63a5efaeab
+
+### Backend
+Django REST Frameworkin tarjoilemat tiedot määritellään [tietomallien](https://www.django-rest-framework.org/tutorial/1-serialization/#creating-a-model-to-work-with) avulla, ei niinkään suoraan muokkaamalla tietokantaa. Tietomalleilla määritellään taulut, niiden kentät, kenttien ominaisuudet ja taulujen relaatiot objektimuodossa instansoimalla `models.Model`-luokkaa esim. seuraavasti:
+
+```Python
+from django.db import models
+
+class Varaus(models.Model):
+    varaaja = models.ForeignKey(Varaajat, on_delete=models.CASCADE)
+    tila = models.ForeignKey(Tilat, on_delete=models.CASCADE)
+    varauspaiva = models.DateField()
+```
+
+Huomaa, että mallissa ei tarvitse erikseen määrittää juoksevaa id-kenttää. DRF:n tietomallit saavat sen automaattisesti.
+
+Tietomallien pohjalta tehdään [serialisoijat](https://www.django-rest-framework.org/tutorial/1-serialization/#creating-a-serializer-class), joiden avulla kannasta haetut tiedot voidaan muotoilla halutun muotoiseksi JSON-objektiksi ja päinvastoin. Mallin pohjalta serialisoija määritellään käyttämällä `ModelSerializer`-luokkaa:
+
+```Python
+from rest_framework import serializers
+
+class VarausSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Varaus
+        fields = ['varaaja', 'tila', 'varauspaiva']
+```
+
+Malleja ja serialisoijia käyttäen voidaan luoda [näkymiä](https://www.django-rest-framework.org/tutorial/2-requests-and-responses/#wrapping-api-views) (views), jotka ovat funktioita tai luokkia, jotka vastaanottavat HTTP-pyynnön ja tuottavat siihen vastauksen. Näkymät voi luoda käsin, mutta DRF:ssa on myös kätevä abstraktio [ViewSet](https://www.django-rest-framework.org/tutorial/6-viewsets-and-routers/#tutorial-6-viewsets-routers), joka tuottaa mallin ja serialisoijan pohjalta tavalliset CRUD-toiminnot:
+
+```Python
+from rest_framework import viewsets
+from .models import Varaus
+from .serializers import VarausSerializer
+
+class VarausViewSet(viewsets.ModelViewSet):
+    queryset = Varaus.objects.all()
+    serializer_class = VarausSerializer
+```
+
+ViewSetin näkymät kartoitetaan polkuihin tähän tyyliin:
+
+```Python
+path('varaukset/', VarauksetViewSet.as_view({'get': 'list', 'post': 'create'}), name='varaukset'),
+```
+
+**HUOM:** Aina kun tietomalleihin tulee muutoksia, täytyy ajaa [migraatiot](https://docs.djangoproject.com/en/5.1/topics/migrations/), jotka päivittävät muutokset kantaan. Tämä tehdään seuraavilla komennoilla:
+
+```
+python manage.py makemigrations
+python manage.py migrate
+```
+
+### BE-tehtävä
+Aloita tarvittaessa uusi DRM-projekti, ja luo siihen tilavarausjärjestelmän tarvitsemat tietomallit ja niille API-näkymät. Kuvaukset tauluista ja kentistä löytyvät [viikon 20 tehtävistä](viikko-20.md#keskiviikko). Ota myös autentikointi ja auktorisointi käyttöön eilisen tehtävän mukaisesti.
+
+### BE-resursseja
+- https://www.django-rest-framework.org/api-guide/serializers/
+- https://www.django-rest-framework.org/tutorial/1-serialization/#creating-a-model-to-work-with
+- https://www.django-rest-framework.org/tutorial/1-serialization/#creating-a-serializer-class
+
+
+## Keskiviikko 
+### Frontend
+
+Olet jo törmännytkin Reactin [koukkuihin](https://react.dev/reference/react/hooks) (hooks). Koukut toivat funktionaalisiin komponentteihin mahdollisuuden käsitellä komponentin tilaa ja sivuvaikutuksia, sekä kytkeä toiminnallisuuksia komponentin elämänkaaritapahtumiin. Olennaisimmat Reactin sisäänrakennetut koukut ovat:
+- [useState](https://react.dev/reference/react/useState), jolla voidaan luoda ja käsitellä komponentin tilaa
+- [useEffect](https://react.dev/reference/react/useEffect), jolla voidaan liipaista toimintoja, kun komponentti piirretään tai joku tieto sen tilassa muuttuu
+- [useContext](https://react.dev/reference/react/useContext), joka antaa mahdollisuuden luoda koko sovelluksen läpäisevän kontekstin, jossa olevaan tietoon komponentit pääsevät helposti käsiksi
+
+Koukkuja on myös mahdollista [luoda itse](https://react.dev/learn/reusing-logic-with-custom-hooks). Tämä voi olla hyvä keino luoda modulaarista, uudelleenkäytettävää ja ylläpidettävää koodia.
+
+Koukku on lyhyesti sanoen funktio, joka alkaa etuliitteellä **use**, ja sisältää jotain logiikkaa, jota halutaan käyttää useammassa kohtaa sovellusta. Esimerkiksi voimme tehdä koukun, joka tarkkailee selainikkunan koon muutoksia, nimeltä `useWindowSize`:
+
+```JS
+import { useState, useEffect } from 'react';
+
+function useWindowSize() {
+    const [windowSize, setWindowSize] = useState({
+        width: window.innerWidth,
+        height: window.innerHeight,
+    });
+
+    useEffect(() => {
+        function handleResize() {
+            setWindowSize({
+                width: window.innerWidth,
+                height: window.innerHeight,
+            });
+        }
+
+        window.addEventListener('resize', handleResize);
+        handleResize();
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    return windowSize;
+}
+
+export default useWindowSize;
+```
+
+Koukku palauttaa tilamuuttujan `windowSize`, jonka arvona on objekti, joka sisältää ikkunan leveyden ja korkeuden. Koukkua voidaan käyttää toisessa komponentissa esimerkiksi näin:
+
+```JS
+import React from 'react';
+import useWindowSize from './useWindowSize';
+
+function MyComponent() {
+    const { width, height } = useWindowSize();
+
+    return (
+        <div>
+            <h2>Ikkunan koko:</h2>
+            <p>Leveys: {width}px</p>
+            <p>Korkeus: {height}px</p>
+        </div>
+    );
+}
+
+export default MyComponent;
+```
+
+### FE-tehtävä
+
+Perehdy Reactin sisäänrakennettuihin koukkuihin. Olemme jo käyttäneet niistä useita, joten voit palata jo aiemmin kijoitettuun koodiin ja katsoa uusin silmin, miten niitä on sovellettu. Perehdy custom-koukkuihin, ja toteuta koukku, jolla haetaan tietoa APIsta. Koukku ottaa parametriksi **url**:n, ja palauttaa haetun **datan**, totuusarvon **loading**, joka kertoo onko lataaminen vielä käynnissä, sekä merkkijonon **error**, joka sisältää mahdollisen virheilmoituksen.
+
+### FE-resursseja
+- https://react.dev/reference/react/hooks
+- https://react.dev/reference/react/useState
+- https://react.dev/reference/react/useEffect
+- https://react.dev/reference/react/useContext
+- https://react.dev/learn/reusing-logic-with-custom-hooks
+
+### Backend
+Django Signals on Djangon sisäänrakennettu viestitoiminnallisuus, joiden avulla tietyt toiminnot, kuten http-kutsun vastaanottaminen tai tiedon poistaminen, voivat liipaista lisätoimintoja. Niiden avulla voidaan esimerkiksi automatisoida tervetulosähköpostin lähettäminen, kun uusi käyttäjä kirjautuu järjestelmään, notifikaation esittäminen kun tiettyyn viestiin tulee kommentti, tai palvelimen toimintojen kirjaaminen lokitiedostoon.
+
+Signaalit käyttävät julkaisija-tilaaja (publisher-subscriber) -mallia, jossa lähettäjä lähettää signaalin, ja sen tilanneet vastaanottajat voivat sen saadessaan suorittaa jonkin toiminnon.
+
+Signaali määritellään instansoimalla `django.dispatch.Signal` -luokka, ja se liitetään vastaanottajiin `signal.connect()` -metodilla.
+
+### BE-tehtävä
+
+Perehdy Djangon signaaleihin, ja toteuta sovellukseen toiminnallisuus, jossa epäonnistuneet sisäänkirjautumiset kirjataan lokitiedostoon.
+
+### BE-resursseja
+- https://www.sitepoint.com/understanding-signals-in-django/
+- https://medium.com/jungletronics/how-django-signals-work-81dc30d0dad5
 
 ## Torstai 
-
-Tämä voi olla sopiva ajankohta jakaa ryhmä frontend- ja backend-tiimeihin. FE-tiimi alkaa perehtyä Reactiin ja Backend-tiimi Djangoon. Full stack-osaamisesta kiinnostuneet voivat toki tehdä molemmat tehtävät.
-
 ### Frontend
-**React** on tämän hetken luultavasti suosituin JavaScript-frontend-framework. Se perustuu itse luotaviin reaktiivisiin komponentteihin, joista näkymät rakennetaan HTML:n lomaan. Komponentit pystyvät ottamaan vastaan dataa (properties, props) isäntäkomponenteilta, ja liipaisemaan tapahtumia (events), jotka isäntäkomponentti voi ottaa vastaan. React-projektit aloitetaan yleensä luomalla projektiaihio erillisellä projektityökalulla. Reactin omaa Create-React-Appia ei enää tueta, vaan Reactin [omilla sivuilla](https://react.dev/learn/build-a-react-app-from-scratch) käyttäjä ohjeistetaan käyttämään kolmannen osapuolen sovelluksia. Näistä [Vite](https://vite.dev/guide/) lienee suosituin.
 
-### FE-tehtävä: React-tutoriaali
-Perehdy Reactin perustoiminnallisuuksiin Reactin [omien sivujen](https://react.dev/learn) kautta. Toteuta sen jälkeen Reactin [ristinolla-tutoriaali](https://react.dev/learn/tutorial-tic-tac-toe).
+Kaikkien React-komponenttien tekeminen itse HTML:stä on täysin mahdollista, mutta HTML:n oletusmuotoilut ovat aika karuja, ja yhtenäisen visuaalisen ilmeen tyylittely kokonaiselle sovellukselle on iso urakka. Järkevä vaihtoehto itse tekemiselle on käyttää jotain valmista UI-kirjastoa. Perehdymme tässä [Material UI (MUI)-kirjastoon](https://mui.com/material-ui/getting-started/), joka on avoimen lähdekoodin implementaatio Googlen samannimisestä visuaalisesta ohjeistosta. 
+
+MUI asennetaan komennolla `npm install @mui/material @emotion/react @emotion/styled`, joka asentaa MUI:n sekä sen tyylittelyyn käytettävän Emotion-moottorin. Lisäksi on suositeltavaa asentaa kirjaston käyttämä Roboto-fontti: `npm install @fontsource/roboto`, joka pitää lisäksi ottaa käyttöön lisäämällä seuraavat rivit React-projektin juuritiedostoon (`main.jsx`):
+```JS
+import '@fontsource/roboto/300.css';
+import '@fontsource/roboto/400.css';
+import '@fontsource/roboto/500.css';
+import '@fontsource/roboto/700.css';
+```
+Voit myös asentaa Material Icons -ikonisetin komennolla `npm install @mui/icons-material`. Voit tarkastella settiin kuuluvia ikoneita osoitteessa https://mui.com/material-ui/material-icons/. 
+
+MUI:ta käytetään niin, että HTML-elementtien sijaan (tai niiden ohessa) käytetään MUI:n valmiiksi muotoiltuja komponentteja. Useimmille sisältötageille löytyy MUI:sta toimiva vastine, ja niiden lisäksi kirjasto sisältää monenlaisia valmiita palikoita eri tarkoituksiin, kuten navigaatiopalkkeja, sivusta aukeavia menuja, notifikaatioita ja paljon muuta.
+
+### FE-tehtävä
+
+Perehdy Material UI:n tarjontaan sen [sivustolla](https://mui.com/material-ui/all-components/). Perehdy erityisesti tässä vaiheessa [tekstikenttään](https://mui.com/material-ui/react-text-field/), [painikkeeseen](https://mui.com/material-ui/react-button/), [tauluun](https://mui.com/material-ui/react-table/), [containeriin](https://mui.com/material-ui/react-container/) sekä [yläpalkkiin](https://mui.com/material-ui/react-app-bar/).
+
+Otetaan työn alle tuttu tilavaraussovellus. Voit aloittaa kokonaan uuden projektin MUI-muotoiluilla, mutta MUI:n asentaminen olemassaolevaan projektiin voi olla havainnollisempaa. Voit säilyttää sovelluksen logiikan samanlaisena kuin se nyt on, ja vain korvata JSX:ssä olevia HTML-elementtejä vastaavilla MUI-komponenteilla, ja katsoa miltä ne näyttävät ja miten ne toimivat osana sovellusta.
+
+Tehtävänä on päivittää tilavaraussovellus käyttämään MUI:ta: sijoita navigaatio yläpalkkiin, ja korvaa eri näkymissä olevat taulut ja lomakkeet MUI:n komponenteilla.
+
+### FE-resursseja
+- https://mui.com/material-ui/getting-started/
+- https://mui.com/material-ui/all-components/
+- https://mui.com/material-ui/material-icons/
+- https://www.youtube.com/watch?v=0KEpWHtG10M&list=PL4cUxeGkcC9gjxLvV4VEkZ6H6H4yWuS58
+
+### Backend
+Lähes aina meillä täytyy olla valmius jollain tavoin rajoittaa endpointista tarjoiltavan datan määrää. Useimmissa järjestelmissä tietokantoihin kertyy tuhansia tai jopa miljoonia rivejä, ja niiden kaikkien tarjoaminen frontille kerralla ei ole mielekästä. Tyypillisimmät tavat rajoittaa haettavaa dataa ovat [sivutus](https://www.django-rest-framework.org/api-guide/pagination/) (pagination) ja [suodatus](https://www.django-rest-framework.org/api-guide/filtering/) (filtering).
+
+**Sivutuksessa** määritellään tietty maksimimäärä rivejä, joita haetaan kerrallaan. API:n käyttäjä asettaa url-parametrit, jotka kertovat joko haettavan [sivunumeron](https://www.django-rest-framework.org/api-guide/pagination/#pagenumberpagination), tai haettavien rivien määrän ja haun alkupisteen [(limit ja offset)](https://www.django-rest-framework.org/api-guide/pagination/#limitoffsetpagination). Kolmas DRF:n oletuksena tarjoama sivutusmetodi on [kursorisivutus](https://www.django-rest-framework.org/api-guide/pagination/#cursorpagination), jossa on mahdollista navigoida vain eteen- ja taaksepäin, mutta ei siirtyä satunnaiselle sivulle listassa. Kursorisivutuksen hyöty on, että se toimii suorituskykyisesti myös erittäin suurissa tauluissa, joissa muunlaiset sivutukset voivat tukehtua.
+
+**Suodatuksessa** määritetään parametri tai parametreja, joiden perusteella osa riveistä jätetään näyttämättä. Esimerkiksi voimme rajoittaa tilavarauspalvelun tilanäkymää niin, että se näyttää vain tilat, joiden nimessä on merkkijono "A1", tai varausnäkymää niin, että siinä näytetään vain varaukset, jotka kohdistuvat joulukuuhun, ja jotka on tehnyt Erkki Merkkinen.
+
+Yksinkertaisia suodatuksia voi DRF:ssä tehdä ylikirjoittamalla `GenericAPIView`:n `get_queryset()`-metodia niin, että hakua rajataan esimerkiksi HTTP-kutsussa annetun parametrin perusteella käyttämällä Djangon Queryset-APIn [kenttähakuja](https://docs.djangoproject.com/en/5.1/ref/models/querysets/#id4) (field lookups) esimerkiksi näin:
+
+```Python
+from myapp.models import Purchase
+from myapp.serializers import PurchaseSerializer
+from rest_framework import generics
+
+class TilaList(generics.ListAPIView):
+    serializer_class = TilaSerializer
+
+    def get_queryset(self):
+        queryset = Tila.objects.all()
+        varaaja = self.request.query_params.get('varaaja')
+        if varaaja is not None:
+            queryset = queryset.filter(tila__varaaja=varaaja)
+        return queryset
+```
+
+Jos tarvitaan monimutkaisempia suodatuksia, voi olla järkevää asentaa `django-filter`-kirjasto, joka yksinkertaistaa ja standardoi DRM:n suodatuksia. Kirjasto asennetaan komennolla `pip install django-filter`, ja konfiguroidaan käyttöön `settings.py`:ssä seuraavasti:
+
+```Python
+REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+}
+```
+
+`Django-filter`-kirjaston tarjoamaa geneeristä suodatusta käytetään luomalla tietomallin pohjalta `FilterSet`:
+```Python
+import django_filters
+from .models import Varaus
+
+class VarausFilter(django_filters.FilterSet):
+    varaaja = django_filters.CharFilter(lookup_expr='icontains')
+    tila = django_filters.CharFilter(lookup_expr='icontains')
+    varauspaiva = django_filters.DateFromToRangeFilter()
+
+    class Meta:
+        model = Varaus
+        fields = ['varaaja', 'varaus', 'varauspaiva']
+```
+
+Tässä määritellään, että `varaaja`- ja `tila`-kenttiä voidaan suodattaa osittaisella merkkijonolla, jonka kirjainkokoa ei huomioida. `Varauspaiva`-kenttää voidaan suodattaa antamalla alku- ja/tai loppupäivämäärä.
+
+Suodatin otetaan käyttöön näkymässä seuraavasti:
+```Python
+from rest_framework.generics import ListAPIView
+from .models import Varaus
+from .serializers import VarausSerializer
+from .filters import VarausFilter
+
+class VarausListView(ListAPIView):
+    queryset = Varaus.objects.all()
+    serializer_class = VarausSerializer
+    filterset_class = VarausFilter
+```
+
+Tätä näkymää voidaan suodattaa url-parametreilla, esim. `?varaaja=kalle&varauspaiva_after=2024-12-10`.
+
+### BE-tehtävä
+
+Toteuta tilavaraussovelluksen tauluihin suodatukset kaikkien kenttien pohjalta sekä sivutus niin, että yhdelle sivulle mahtuu 10 riviä. Lisää tarvittaessa kantaan rivejä, jotta voit testata suodatusta ja sivutusta.
+
+### BE-resursseja
+- https://www.django-rest-framework.org/api-guide/pagination/
+- https://www.django-rest-framework.org/api-guide/filtering/
+- https://docs.djangoproject.com/en/5.1/ref/models/querysets/#id4
+- https://django-filter.readthedocs.io/en/stable/guide/rest_framework.html
+
+## Perjantai
+### Frontend 
+
+MUI:n komponenttien ulkoasua määrittää **teema**, joka sisältää mm. fonttiasetukset, tekstikoot eri tilanteissa, väripaletin, pudotusvarjojen asetukset jne. Teema syötetään sovellukseen käyttämällä `ThemeProvider`-komponenttia, joka käyttää pellin alla Reactin **kontekstia.** Teeman avulla sovelluksen komponentit noudattelevat yhtenäistä visuaalista linjaa. 
+
+Teemaa on mahdollista muokata niin, että se vastaa esimerkiksi yrityksen graafista ohjeistoa. Yksi keino tähän on muokata [teemamuuttujia](https://mui.com/material-ui/customization/theming/#theme-configuration-variables) luomalla teemaobjekti `createTheme()`-metodilla, antamalla sille parametrina muutokset oletusteemaan verrattuna, ja tarjoilemalla teema `ThemeProviderilla` esim. seuraavasti:
+
+```JS
+import * as React from 'react';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { lime, purple } from '@mui/material/colors';
+import Button from '@mui/material/Button';
+
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#FF5733',
+      // light: lasketaan palette.primary.main:in perusteella,
+      // dark: lasketaan palette.primary.main:in perusteella,
+      // contrastText: lasketaan niin, että se erottuu hyvin palette.primary.main:iä vasten
+    },
+    secondary: {
+      main: '#E0C2FF',
+      light: '#F5EBFF',
+      // dark: lasketaan palette.secondary.main:in perusteella,
+      contrastText: '#47008F',
+    },
+  },
+});
+
+export default function UsingColorObject() {
+  return (
+    <ThemeProvider theme={theme}>
+      <Button variant="contained">Primary</Button>
+      <Button variant="contained" color="secondary" sx={{ ml: 2 }}>
+        Secondary
+      </Button>
+    </ThemeProvider>
+  );
+}
+```
+Tässä muokataan teeman primaarivärin `main`-tokenia (kirkkaan ja tumman teeman variantit sekä sopiva tekstiväri generoidaan automaattisesti), sekä sekundaarivärin `main`-, `light`- ja `contrastText`-tokeneita (tumman teeman variantti generoidaan automaattisesti). `ThemeProvider`:in sisällä olevat MUI-komponentit käyttävät sitten näitä värejä.
+
+Jos luot omia custom-komponentteja, voit tehdä ne seuraamaan voimassaolevaa MUI-teemaa käyttämällä `styled()`-wrapperia MUI-sivuston [ohjeiden](https://mui.com/material-ui/customization/creating-themed-components/) mukaan. Ratkaisu vaatii vähän boilerplate-koodia; alla esimerkki komponentista, joka koostuu `h2`-headerista ja `p`-tekstikappaleesta `div`-elementin sisällä:
+
+```JS
+import React from 'react';
+import { styled } from '@mui/material/styles';
+
+const CardWrapper = styled('div')(({ theme }) => ({
+  padding: theme.spacing(3),
+  backgroundColor: theme.palette.background.paper,
+
+  '& .card-title': {
+    color: theme.palette.primary.main,
+    marginBottom: theme.spacing(2),
+    fontSize: theme.typography.h5.fontSize,
+  },
+
+  '& .card-description': {
+    color: theme.palette.text.secondary,
+    marginBottom: theme.spacing(2),
+    fontSize: theme.typography.body1.fontSize,
+  },
+}));
+
+function CustomCard({ title, description }) {
+  return (
+    <CardWrapper>
+      <h2 className="card-title">{title}</h2>
+      <p className="card-description">{description}</p>
+    </CardWrapper>
+  );
+}
+
+export default CustomCard;
+```
+
+Esimerkissä luodaan `CustomCard`-komponentti, jonka otsake ja tekstikappale ottavat tekstivärin, marginaalin ja fonttikoon teeman määrittelyistä. `Div`-elementti, jonka sisällä ne ovat, ottaa teemasta padding-määritykset sekä taustavärin. Jos tätä komponenttia käytetään eri teemojen sisällä, se mukautuu yleiseen ilmeeseen.
+
+### FE-tehtävä
+Suunnittele tilavaraussovellukselle uusi väripaletti ja valitse sille uusi fontti, ja tee niiden pohjalta sovellukselle uusi teema. Luo myös uusi taulukko- tai listakomponentti, jota käytät MUI-Tablen sijasta eri taulujen tietojen esittämiseen, ja toteuta se niin, että se käyttää MUI-teeman värejä ja fontteja.
+
+### FE-Resursseja
+- https://mui.com/material-ui/customization/theming/
+- https://mui.com/material-ui/customization/creating-themed-components/
+- https://www.dhiwise.com/post/exploring-mui-theming-options-customization-made-easy
+
 
 ### Backend
 
-[**Django**](https://www.djangoproject.com/) on suosittu framework web-palveluiden backendien toteuttamiseen. Django on suunniteltu helposti käyttöönotettavaksi, ja sen mukana tulee valmiita toiminnallisuuksia, kuten autentikointi ja dynaamisesti generoitu admin-näkymä.
+DRF muodostaa automaattisesti **selailtavan API:n,** jossa käyttäjä voi testailla endpointteja eri parametreilla. Tästä on hyötyä API:n kehityksessä ja testauksessa, ja myös FE-kehityksessä, kun FE-tiimi voi sen kautta helposti tarkistaa mitä parametreja ja tietotyyppejä endpointit ottavat vastaan.  
 
-### BE-tehtävä: Django-tutoriaali
-Perehdy Djangon perustoiminnallisuuksiin sen [omien sivujen](https://docs.djangoproject.com/en/5.1/) kautta ja toteuttamalla [harjoittelututoriaali](https://docs.djangoproject.com/en/5.1/intro/tutorial01/).
+DRF:n selailtava API voi olla riittävä työkalu, mutta on olemassa myös API-standardi nimeltä [OpenAPI](https://swagger.io/resources/open-api/). OpenAPI on standardi, jonka perusteella REST API:lle voidaan tuottaa kieliagnostinen määrittely. Tätä määrittelyä voidaan käyttää viestittämään API:n ominaisuuksia eri toimijoiden kesken, ja myös automatisoida jotain sovelluskehityksen vaiheita, kuten juurikin luoda selailtavan API:n työkalulla kuten [Swagger](https://swagger.io/tools/open-source/). 
 
-### Resursseja
-#### React
-- https://react.dev/learn
-- https://www.w3schools.com/react/default.asp
-- https://www.youtube.com/watch?v=Tn6-PIqc4UM
-- https://www.youtube.com/watch?v=hn80mWvP-9g
+OpenAPIlla ja Swaggerilla saa siis tehtyä saman asian, mitä DRF tarjoaa sisäänrakennettuna, mutta niiden erona on se, että DRF:n oma selailtava API on DRF-spesifinen ratkaisu siinä missä OpenAPI on avoin standardi. Projektista riippuen tämä voi olla OpenAPI:n käyttöönoton vaatiman työn arvoista. 
 
-#### Django
-- https://www.djangoproject.com/start/
-- https://www.w3schools.com/django/
-- https://www.youtube.com/watch?v=qcJZN1pvG6A
+DRF:lle on olemassa useita työkaluja, joilla sen API:sta saa automaattisesti generoitua OpenAPI-yhteensopivan dokumentaation ja Swagger-käyttöliittymän. Käytämme tässä `drf-yasg` –kirjastoa. 
 
-## Perjantai 
+`Drf-yasg` otetaan käyttöön komennolla `pip install drf-yasg`. Se konfiguroidaan `settings.py`:ssä seuraavasti:  
 
-### Frontend
-Harjoitellaan datan hakemista APIsta ja perehdytään reititykseen.
+```Python
+INSTALLED_APPS = [ 
+   ... 
+   'django.contrib.staticfiles',  
+   'drf_yasg', 
+   ... 
+] 
+```
 
-Tutustu tutoriaaliin sivulla https://medium.com/@xspaces2011/fetching-data-from-apis-in-react-js-d7bcac7f7637. Sivulla esitellään yksinkertainen esimerkki, jossa haetaan dataa rajapinnasta ja esitetään se komponentissa. Esimerkkiin sisältyy myös datan latauksen viiveen ja mahdollisen virheen käsittely.
+Ja `urls.py`:ssä seuraavasti: 
 
-Huomaat, että esimerkissä on käytetty JavaScriptin sisäänrakennettua Fetch-apia eikä aiemmin käytettyä Axios-kirjastoa. Axios kehitettiin alunperin ennen kuin Fetch-apia oli olemassa, ja silloin sellaiselle kirjastolle oli kysyntää. Axios on hitusen helpompi käyttää, mutta jos haluat putsata projektistasi turhat riippuvuudet, se on varmaan karsintalistan kärkipäässä.
+```Python
+from django.urls import re_path 
+from rest_framework import permissions 
+from drf_yasg.views import get_schema_view 
+from drf_yasg import openapi 
 
-React on tarkoitettu **yhden sivun sovellusten** (single-page application) toteuttamiseen. Tämä tarkoittaa sitä, että vaikka sovelluksessa on navigointi, ja vaikka selaimen osoitepalkin polku muuttuu, selain ei todellisuudessa avaa uutta sivua, vaan kaikki siirtymät tapahtuvat ohjelmallisesti React-sovelluksen sisällä. Meidän ei kuitenkaan tarvitse rakentaa reitityslogiikkaa tyhjästä, vaan siihen on olemassa olemassaolevia kirjastoja, esim. [React Router](https://reactrouter.com/en/main/start/overview).
+schema_view = get_schema_view( 
+   openapi.Info( 
+      title="Tilavaraus API", 
+      default_version='v1', 
+      description="APIn kuvaus", 
+      terms_of_service="https://www.google.com/policies/terms/", 
+      contact=openapi.Contact(email="contact@tilavaraus.local"), 
+      license=openapi.License(name="BSD License"), 
+   ), 
+   public=True, 
+   permission_classes=(permissions.AllowAny,), 
+)
 
-### FE-tehtävä: React-frontend tilavaraukseen
-Käytetään backendinä maanantaina luotua REST-frameworkkia, tai vaihtoehtoisesti voit muodostaa työparin jonkun BE-kaverin kanssa, ja tehdä fronttisi hänen luomaansa backendiä vasten.
+urlpatterns = [ 
+   path('swagger<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'), 
+   path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'), 
+] 
+```
 
-Toteuta React-sovellus, joka sisältää näkymät tilojen, varaajien ja varausten tarkasteluun, lisäämiseen ja poistamiseen. Käytä näkymien välillä navigointiin React Routeria. Rakenna näkymät komponenteista, ja mieti niitä tehdessäsi, mitkä niistä voisivat olla monikäyttöisiä, ja mitä ehkä käytetään vain yhdessä näkymässä. Tähän ei välttämättä ole yhtä oikeaa ratkaisua! Kokeilemalla erilaisia ratkaisuja saa tuntuman siihen, mikä ovat erilaisten rakenteiden hyödyt ja haitat.
+Tämä tarjoilee 3 polkua, joista API:n määrittelyjä voidaan tarkastella: 
 
-### Backend
-Koska toteutamme Djangolla vain APIn emmekä esimerkiksi julkaisujärjestelmää, asennamme sen rinnalle [Django REST Frameworkin](https://www.django-rest-framework.org/), joka on nimenomaan REST-rajapintojen rakentamiseen Djangolla suunniteltu työkalupakki. Se sisältää mm. [serialisoijia](https://www.django-rest-framework.org/api-guide/serializers/) kannasta haetun datan konvertoimiseen haluttuun tietomuotoon, ja kätevän automaattisesti generoituvan [web-API:n](https://www.django-rest-framework.org/topics/browsable-api/) debuggausta ja FE-kehitystä varten.
+- JSON -näkymä osoitteessa `/swagger.json `
+- YAML -näkymä osoitteessa `/swagger.yaml` 
+- swagger-ui -näkymä osoitteessa `/swagger/` 
 
-### BE-tehtävä: DRF-backend tietokantaan
-Toteutetaan REST API tilavaraustietokantaan DRF:ää käyttäen. Luo CRUD-endpointit tilat-, varaajat- ja varaukset-tauluihin.
+OpenAPI käyttää määrittelyjen esittämiseen JSONin ohella [YAML](https://yaml.org/):ia. YAML on ihmisluettava datan serialisointiformaatti samaan tapaan kuin JSON, mutta se on JSONia helppolukuisempi, ja tavallaan JSONia ilman ylimääräisiä hipsuja ja sulkeita. YAMLia käytetään JSONin vaihtoehtona erilaisten konfiguraatio- ja määrittelytiedostojen kirjoittamiseen. Esimerkiksi seuraava JSON: 
 
-### Resursseja
-#### React
-- https://medium.com/@xspaces2011/fetching-data-from-apis-in-react-js-d7bcac7f7637
-- https://reactrouter.com/en/main/start/overview
-- https://www.youtube.com/watch?v=oTIJunBa6MA
+```JSON
+{ 
+  "id": 0, 
+  "nimi": "Kalle", 
+  "ajokortti": true, 
+  "osaaminen": [ 
+    { 
+      "kieli": "Python", 
+      "taso": 3 
+    }, 
+    { 
+      "kieli": "JavaScript", 
+      "taso": 4 
+    } 
+  ] 
+} 
+```
+Kääntyy YAML:ksi seuraavasti: 
 
-#### DRF
-- https://www.django-rest-framework.org/
-- https://dev.to/msnmongare/title-building-a-food-api-with-django-and-mysql-5b12
-- https://www.youtube.com/watch?v=cJveiktaOSQ
+```YAML
+--- 
+id: 0 
+nimi: Kalle 
+ajokortti: true 
+osaaminen: 
+- kieli: Python 
+  taso: 3 
+- kieli: JavaScript 
+  taso: 4 
+```
+
+Kuten huomaat, YAML käyttää merkittävästi vähemmän välimerkkejä, ja esittää hierarkiaa ja rakennetta sisennyksillä sulkeiden sijaan, samaan tapaan kuin Python. 
+
+### BE-tehtävä 
+
+Ota `drf-yasg` käyttöön projektissa, ja tarkastele sen generoimia Swagger-näkymiä. 
+
+### BE-Resursseja: 
+- https://swagger.io/specification/
+- https://drf-yasg.readthedocs.io/en/stable/
+- https://yaml.org/
+- https://www.bairesdev.com/tools/json2yaml/

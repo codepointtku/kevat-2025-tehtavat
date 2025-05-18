@@ -1,4 +1,4 @@
-### [Viikko 21 ->](./README.md)
+### [Viikko 21 ->](./viikko-21.md)
 # Viikko 20
 ## Maanantai 
 Kyselyn perusteella kurssilaisilla on perus-web-teknologiat aika hyvin hallussa, mutta aloitetaan kuitenkin perusteista, ja tehdään vähän sormiharjoituksia, niin saadaan verryteltyä koodauslihaksia. 
